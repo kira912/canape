@@ -14,13 +14,14 @@ import { useSession } from "../lib/household-store";
 import { centered, FORM_MAX_WIDTH } from "../lib/layout";
 import { useCreateHousehold, useJoinHousehold } from "../lib/queries";
 
-type Mode = "create" | "join";
+/** "start": solo in one tap (a household of one, invite later); "create"/"join": shared household forms. */
+type Mode = "start" | "create" | "join";
 
 export default function WelcomeScreen() {
   const { t } = useTranslation();
   const token = useSession((s) => s.token);
   const legacyProviderIds = useSession((s) => s.providerIds);
-  const [mode, setMode] = useState<Mode>("create");
+  const [mode, setMode] = useState<Mode>("start");
   const [memberName, setMemberName] = useState("");
   const [color, setColor] = useState<string>(MEMBER_COLORS[0]);
   const [householdName, setHouseholdName] = useState("");
@@ -31,13 +32,21 @@ export default function WelcomeScreen() {
   if (token) return <Redirect href="/" />;
 
   const pending = create.isPending || join.isPending;
-  const failure = mode === "create" ? create.error : join.error;
+  const failure = mode === "join" ? join.error : create.error;
   const error = !failure
     ? null
     : failure instanceof ApiError && failure.status === 404 && mode === "join"
       ? t("errors.invalidInviteCode")
       : errorMessage(t, failure);
   const canSubmit = memberName.trim().length > 0 && (mode === "create" || inviteCode.trim().length === 6) && !pending;
+
+  const startSolo = () =>
+    create.mutate({
+      memberName: t("welcome.soloName"),
+      color: MEMBER_COLORS[0],
+      householdName: t("welcome.defaultHouseholdName"),
+      providerIds: legacyProviderIds,
+    });
 
   const submit = () => {
     if (!canSubmit) return;
@@ -63,69 +72,89 @@ export default function WelcomeScreen() {
           <Text style={styles.logo}>Canapé</Text>
           <Text style={styles.tagline}>{t("welcome.tagline")}</Text>
 
-          <View style={styles.modes}>
-            <Chip label={t("welcome.create")} selected={mode === "create"} onPress={() => setMode("create")} />
-            <Chip label={t("welcome.join")} selected={mode === "join"} onPress={() => setMode("join")} />
-          </View>
-
-          {mode === "join" ? (
-            <Field label={t("welcome.inviteCode")}>
-              <TextField
-                value={inviteCode}
-                onChangeText={(v) => setInviteCode(v.toUpperCase())}
-                placeholder="ABC234"
-                autoCapitalize="characters"
-                autoCorrect={false}
-                maxLength={6}
-                style={styles.codeInput}
-              />
-            </Field>
-          ) : null}
-
-          <Field label={t("welcome.firstName")}>
-            <TextField
-              value={memberName}
-              onChangeText={setMemberName}
-              placeholder={t("welcome.firstNamePlaceholder")}
-              maxLength={30}
-              onSubmitEditing={submit}
-            />
-          </Field>
-
-          <Field label={t("welcome.color")}>
-            <View style={styles.colors}>
-              {MEMBER_COLORS.map((c) => (
-                <Pressable
-                  key={c}
-                  onPress={() => setColor(c)}
-                  accessibilityRole="radio"
-                  aria-checked={color === c}
-                  style={[styles.swatch, { backgroundColor: c }, color === c && styles.swatchSelected]}
-                />
-              ))}
-            </View>
-          </Field>
-
-          {mode === "create" ? (
-            <Field label={t("welcome.householdName")}>
-              <TextField
-                value={householdName}
-                onChangeText={setHouseholdName}
-                placeholder={t("welcome.defaultHouseholdName")}
-                maxLength={40}
-              />
-            </Field>
+          {mode === "start" ? (
+            <>
+              <Button label={pending ? t("welcome.pending") : t("welcome.start")} onPress={startSolo} />
+              <Text style={styles.hint}>{t("welcome.startHint")}</Text>
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+              <View style={styles.divider} />
+              <Button label={t("welcome.together")} variant="ghost" onPress={() => setMode("create")} />
+              <Button label={t("welcome.join")} variant="ghost" onPress={() => setMode("join")} />
+            </>
           ) : (
-            <Text style={styles.hint}>{t("welcome.rejoinHint")}</Text>
-          )}
+            <>
+              <Pressable onPress={() => setMode("start")} style={styles.back} accessibilityRole="button" hitSlop={8}>
+                <Text style={styles.backLabel}>← {t("welcome.back")}</Text>
+              </Pressable>
+              <View style={styles.modes}>
+                <Chip label={t("welcome.create")} selected={mode === "create"} onPress={() => setMode("create")} />
+                <Chip label={t("welcome.join")} selected={mode === "join"} onPress={() => setMode("join")} />
+              </View>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          <Button
-            label={
-              pending ? t("welcome.pending") : mode === "create" ? t("welcome.submitCreate") : t("welcome.submitJoin")
-            }
-            onPress={submit}
-          />
+              {mode === "join" ? (
+                <Field label={t("welcome.inviteCode")}>
+                  <TextField
+                    value={inviteCode}
+                    onChangeText={(v) => setInviteCode(v.toUpperCase())}
+                    placeholder="ABC234"
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    maxLength={6}
+                    style={styles.codeInput}
+                  />
+                </Field>
+              ) : null}
+
+              <Field label={t("welcome.firstName")}>
+                <TextField
+                  value={memberName}
+                  onChangeText={setMemberName}
+                  placeholder={t("welcome.firstNamePlaceholder")}
+                  maxLength={30}
+                  onSubmitEditing={submit}
+                />
+              </Field>
+
+              <Field label={t("welcome.color")}>
+                <View style={styles.colors}>
+                  {MEMBER_COLORS.map((c) => (
+                    <Pressable
+                      key={c}
+                      onPress={() => setColor(c)}
+                      accessibilityRole="radio"
+                      aria-checked={color === c}
+                      style={[styles.swatch, { backgroundColor: c }, color === c && styles.swatchSelected]}
+                    />
+                  ))}
+                </View>
+              </Field>
+
+              {mode === "create" ? (
+                <Field label={t("welcome.householdName")}>
+                  <TextField
+                    value={householdName}
+                    onChangeText={setHouseholdName}
+                    placeholder={t("welcome.defaultHouseholdName")}
+                    maxLength={40}
+                  />
+                </Field>
+              ) : (
+                <Text style={styles.hint}>{t("welcome.rejoinHint")}</Text>
+              )}
+
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+              <Button
+                label={
+                  pending
+                    ? t("welcome.pending")
+                    : mode === "create"
+                      ? t("welcome.submitCreate")
+                      : t("welcome.submitJoin")
+                }
+                onPress={submit}
+              />
+            </>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -154,6 +183,9 @@ const styles = StyleSheet.create({
   colors: { flexDirection: "row", gap: spacing.md },
   swatch: { width: 36, height: 36, borderRadius: 18, borderWidth: 3, borderColor: "transparent" },
   swatchSelected: { borderColor: colors.text },
-  hint: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
+  hint: { color: colors.textMuted, fontSize: 13, lineHeight: 18, textAlign: "center" },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginVertical: spacing.sm },
+  back: { alignSelf: "flex-start" },
+  backLabel: { color: colors.primary, fontSize: 14, fontWeight: "600" },
   error: { color: "#EB5757", fontSize: 14, textAlign: "center" },
 });

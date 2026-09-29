@@ -10,11 +10,14 @@ import { TitleRow } from "../../components/TitleRow";
 import { colors, spacing } from "../../constants/theme";
 import { centered } from "../../lib/layout";
 import { errorMessage } from "../../lib/error-message";
-import { useFavorites, useHouseholdProviderIds, useMe, useProvidersById } from "../../lib/queries";
+import { useFavorites, useHouseholdProviderIds, useIsSolo, useMe, useProvidersById } from "../../lib/queries";
 
 export default function FavoritesScreen() {
   const { t } = useTranslation();
-  const [list, setList] = useState<FavoriteList>("household");
+  const [selectedList, setList] = useState<FavoriteList>("household");
+  // Solo: only the personal list exists (the shared one appears once someone joins).
+  const solo = useIsSolo();
+  const list: FavoriteList = solo ? "me" : selectedList;
   const favorites = useFavorites();
   const me = useMe();
   const providerIds = useHouseholdProviderIds();
@@ -38,20 +41,22 @@ export default function FavoritesScreen() {
   return (
     <View style={styles.screen}>
       <View style={centered()}>
-        <PageTitle>{t("tabs.favoritesHeader")}</PageTitle>
+        <PageTitle>{solo ? t("tabs.favoritesHeaderSolo") : t("tabs.favoritesHeader")}</PageTitle>
       </View>
-      <View style={[styles.tabs, centered()]}>
-        <Chip
-          label={t("favorites.householdTab", { count: favorites.data?.household.length ?? 0 })}
-          selected={list === "household"}
-          onPress={() => setList("household")}
-        />
-        <Chip
-          label={t("favorites.mineTab", { count: favorites.data?.mine.length ?? 0 })}
-          selected={list === "me"}
-          onPress={() => setList("me")}
-        />
-      </View>
+      {solo ? null : (
+        <View style={[styles.tabs, centered()]}>
+          <Chip
+            label={t("favorites.householdTab", { count: favorites.data?.household.length ?? 0 })}
+            selected={list === "household"}
+            onPress={() => setList("household")}
+          />
+          <Chip
+            label={t("favorites.mineTab", { count: favorites.data?.mine.length ?? 0 })}
+            selected={list === "me"}
+            onPress={() => setList("me")}
+          />
+        </View>
+      )}
       <SectionList
         sections={sections}
         keyExtractor={(item: FavoriteItem) => `${item.title.mediaType}-${item.title.tmdbId}`}

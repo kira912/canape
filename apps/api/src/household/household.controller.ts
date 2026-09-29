@@ -1,9 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Post, Put, Req, UseGuards } from "@nestjs/common";
-import {
-  createHouseholdSchema,
-  joinHouseholdSchema,
-  updateProvidersSchema,
-} from "@canape/shared";
+import { createHouseholdSchema, joinHouseholdSchema, updateMemberSchema, updateProvidersSchema } from "@canape/shared";
 import type { Request } from "express";
 import type { z } from "zod";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
@@ -39,6 +35,15 @@ export class HouseholdController {
     @Body(new ZodValidationPipe(updateProvidersSchema)) body: z.output<typeof updateProvidersSchema>,
   ) {
     return this.households.updateProviders(member.householdId, body.providerIds);
+  }
+
+  @Put("household/member")
+  @UseGuards(MemberGuard)
+  updateMember(
+    @CurrentMember() member: AuthenticatedMember,
+    @Body(new ZodValidationPipe(updateMemberSchema)) body: z.output<typeof updateMemberSchema>,
+  ) {
+    return this.households.updateMember(member.memberId, member.householdId, body);
   }
 
   /** Signs this device out (the member and their data stay). */

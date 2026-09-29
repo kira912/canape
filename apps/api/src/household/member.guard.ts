@@ -20,7 +20,10 @@ export class MemberGuard implements CanActivate {
     });
     if (!session) throw new UnauthorizedException("Session inconnue");
 
-    request.member = { memberId: session.member.id, householdId: session.member.householdId } satisfies AuthenticatedMember;
+    request.member = {
+      memberId: session.member.id,
+      householdId: session.member.householdId,
+    } satisfies AuthenticatedMember;
     return true;
   }
 }

@@ -71,6 +71,23 @@ export class HouseholdService {
     return toHousehold(household);
   }
 
+  /** Renames the member (names are unique per household, case-insensitive) and/or changes their colour. */
+  async updateMember(
+    memberId: string,
+    householdId: string,
+    changes: { name?: string; color?: string },
+  ): Promise<Household> {
+    if (changes.name) {
+      const taken = await this.prisma.member.findFirst({
+        where: { householdId, id: { not: memberId }, name: { equals: changes.name, mode: "insensitive" } },
+        select: { id: true },
+      });
+      if (taken) throw new ConflictException("Ce prénom est déjà utilisé dans le foyer");
+    }
+    await this.prisma.member.update({ where: { id: memberId }, data: changes });
+    return this.getHousehold(householdId);
+  }
+
   async closeSession(token: string): Promise<void> {
     await this.prisma.session.deleteMany({ where: { tokenHash: hashToken(token) } });
   }

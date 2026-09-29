@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { SUPPORTED_LANGUAGES, type Household } from "@canape/shared";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, FlatList, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { Button } from "../../components/Button";
@@ -10,12 +10,22 @@ import { PageTitle } from "../../components/PageTitle";
 import { MemberDot } from "../../components/MemberDot";
 import { ProviderLogo } from "../../components/ProviderLogo";
 import { TextField } from "../../components/TextField";
+import { TvSection } from "../../components/TvSection";
 import { colors, radius, spacing } from "../../constants/theme";
 import { LANGUAGE_NAMES, type LanguagePreference } from "../../i18n";
+import { ApiError } from "../../lib/api-client";
 import { errorMessage } from "../../lib/error-message";
 import { useSession } from "../../lib/household-store";
 import { centered, useIsWide } from "../../lib/layout";
-import { useHouseholdProviderIds, useLeaveHousehold, useMe, useProviders, useUpdateProviders } from "../../lib/queries";
+import {
+  useHouseholdProviderIds,
+  useIsSolo,
+  useLeaveHousehold,
+  useMe,
+  useProviders,
+  useUpdateMember,
+  useUpdateProviders,
+} from "../../lib/queries";
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
@@ -26,6 +36,7 @@ export default function SettingsScreen() {
   const leave = useLeaveHousehold();
   const [filter, setFilter] = useState("");
   const isWide = useIsWide();
+  const solo = useIsSolo();
 
   const visible = useMemo(() => {
     const needle = filter.trim().toLowerCase();
@@ -63,9 +74,12 @@ export default function SettingsScreen() {
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <View style={styles.header}>
-            <PageTitle style={styles.flushTitle}>{t("tabs.householdHeader")}</PageTitle>
+            <PageTitle style={styles.flushTitle}>
+              {solo ? t("tabs.profileHeader") : t("tabs.householdHeader")}
+            </PageTitle>
             <HouseholdCard household={me.data.household} memberId={me.data.memberId} />
             <LanguagePicker />
+            <TvSection />
             <Text style={styles.sectionTitle}>{t("household.platforms")}</Text>
             <Text style={styles.intro}>{t("household.platformsIntro")}</Text>
             <TextField
@@ -136,20 +150,34 @@ function LanguagePicker() {
 
 function HouseholdCard({ household, memberId }: { household: Household; memberId: string }) {
   const { t } = useTranslation();
+  const solo = household.members.length <= 1;
   const share = () =>
     Share.share({ message: t("household.shareMessage", { code: household.inviteCode }) }).catch(() => undefined);
 
   return (
     <View style={styles.card}>
-      <Text style={styles.cardTitle}>{household.name}</Text>
-      <View style={styles.members}>
-        {household.members.map((m) => (
-          <View key={m.id} style={styles.member}>
-            <MemberDot member={m} size={22} />
-            <Text style={styles.memberName}>{m.id === memberId ? t("household.you", { name: m.name }) : m.name}</Text>
+      {solo ? null : (
+        <>
+          <Text style={styles.cardTitle}>{household.name}</Text>
+          <View style={styles.members}>
+            {household.members.map((m) => (
+              <View key={m.id} style={styles.member}>
+                <MemberDot member={m} size={22} />
+                <Text style={styles.memberName}>
+                  {m.id === memberId ? t("household.you", { name: m.name }) : m.name}
+                </Text>
+              </View>
+            ))}
           </View>
-        ))}
-      </View>
+        </>
+      )}
+      <NameEditor current={household.members.find((m) => m.id === memberId)?.name ?? ""} />
+      {solo ? (
+        <View style={styles.soloInvite}>
+          <Text style={styles.cardTitle}>{t("household.soloTitle")}</Text>
+          <Text style={styles.soloIntro}>{t("household.soloIntro")}</Text>
+        </View>
+      ) : null}
       <View style={styles.inviteRow}>
         <View style={styles.inviteText}>
           <Text style={styles.inviteLabel}>{t("household.inviteCode")}</Text>
@@ -162,6 +190,37 @@ function HouseholdCard({ household, memberId }: { household: Household; memberId
           <Text style={styles.shareLabel}>{t("household.share")}</Text>
         </Pressable>
       </View>
+    </View>
+  );
+}
+
+/** Rename yourself, e.g. the default "Moi" of a solo start, before inviting someone. */
+function NameEditor({ current }: { current: string }) {
+  const { t } = useTranslation();
+  const [name, setName] = useState(current);
+  const update = useUpdateMember();
+  useEffect(() => setName(current), [current]);
+  const dirty = name.trim().length > 0 && name.trim() !== current;
+  const failure = update.error;
+
+  return (
+    <View style={styles.nameEditor}>
+      <Text style={styles.inviteLabel}>{t("household.yourName")}</Text>
+      <View style={styles.nameRow}>
+        <TextField
+          value={name}
+          onChangeText={setName}
+          maxLength={30}
+          style={styles.nameInput}
+          onSubmitEditing={() => dirty && update.mutate({ name: name.trim() })}
+        />
+        {dirty ? <Button label={t("household.save")} onPress={() => update.mutate({ name: name.trim() })} /> : null}
+      </View>
+      {failure ? (
+        <Text style={styles.error}>
+          {failure instanceof ApiError && failure.status === 409 ? t("household.nameTaken") : errorMessage(t, failure)}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -190,6 +249,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   shareLabel: { color: colors.primaryText, fontWeight: "600" },
+  soloInvite: { gap: spacing.xs, marginTop: spacing.sm },
+  soloIntro: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
+  nameEditor: { gap: spacing.xs },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  nameInput: { flex: 1 },
+  error: { color: "#EB5757", fontSize: 13 },
   sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "700", marginTop: spacing.md },
   languages: { gap: spacing.sm },
   languageChips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },

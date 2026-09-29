@@ -20,6 +20,7 @@ import {
   type FavoriteRef,
   type Favorites,
   type JoinHouseholdInput,
+  type UpdateMemberInput,
   type MediaType,
   type Me,
   type MatchFiltersInput,
@@ -144,6 +145,28 @@ export function useHouseholdProviderIds(): number[] {
   return data?.household.providerIds ?? EMPTY_IDS;
 }
 const EMPTY_IDS: number[] = [];
+
+/**
+ * Solo = a household of one (the "Commencer" start). Shared features (shared
+ * list, "who has seen it", Match) stay out of the way until someone joins.
+ */
+export function useIsSolo(): boolean {
+  const { data } = useMe();
+  return (data?.household.members.length ?? 1) <= 1;
+}
+
+export function useUpdateMember() {
+  const queryClient = useQueryClient();
+  const token = useSession((s) => s.token);
+  return useMutation({
+    mutationFn: (changes: UpdateMemberInput) => apiRequest("PUT", "/household/member", householdSchema, changes),
+    onSuccess: (household) => {
+      const key = ["me", token];
+      const previous = queryClient.getQueryData<Me>(key);
+      if (previous) queryClient.setQueryData<Me>(key, { ...previous, household });
+    },
+  });
+}
 
 export function useCreateHousehold() {
   const setSession = useSession((s) => s.setSession);

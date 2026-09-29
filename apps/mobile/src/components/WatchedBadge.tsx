@@ -4,8 +4,8 @@ import { StyleSheet, Text, View } from "react-native";
 import { colors, spacing } from "../constants/theme";
 import { MemberDot } from "./MemberDot";
 
-/** "✓" followed by the colour dot of each member who has seen the title. */
-export function WatchedBadge({ watchers }: { watchers: Member[] }) {
+/** "✓" followed by the colour dot of each member who has seen the title (no dots when alone). */
+export function WatchedBadge({ watchers, showMembers = true }: { watchers: Member[]; showMembers?: boolean }) {
   const { t } = useTranslation();
   if (watchers.length === 0) return null;
   return (
@@ -14,9 +14,7 @@ export function WatchedBadge({ watchers }: { watchers: Member[] }) {
       accessibilityLabel={t("watched.seenBy", { names: watchers.map((m) => m.name).join(", ") })}
     >
       <Text style={styles.check}>✓</Text>
-      {watchers.map((m) => (
-        <MemberDot key={m.id} member={m} size={16} />
-      ))}
+      {showMembers ? watchers.map((m) => <MemberDot key={m.id} member={m} size={16} />) : null}
     </View>
   );
 }

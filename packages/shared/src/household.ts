@@ -58,6 +58,12 @@ export type JoinHouseholdInput = z.input<typeof joinHouseholdSchema>;
 
 export const updateProvidersSchema = z.object({ providerIds: providerIdsSchema });
 
+/** A member renames themselves (e.g. the default "Moi" of a solo start) or changes colour. */
+export const updateMemberSchema = z
+  .object({ name: memberNameSchema.optional(), color: colorSchema.optional() })
+  .refine((v) => v.name !== undefined || v.color !== undefined, "Nothing to update");
+export type UpdateMemberInput = z.input<typeof updateMemberSchema>;
+
 // ---------------------------------------------------------------------------
 // Favorites: one list shared by the household + one personal list per member.
 // ---------------------------------------------------------------------------

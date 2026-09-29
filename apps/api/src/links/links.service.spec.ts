@@ -33,7 +33,13 @@ describe("LinksService.buildWatchOptions", () => {
     });
 
     expect(options).toEqual([
-      { provider: netflix, type: "subscription", link: "https://www.netflix.com/title/123", linkKind: "direct" },
+      {
+        provider: netflix,
+        type: "subscription",
+        link: "https://www.netflix.com/title/123",
+        linkKind: "direct",
+        platform: "netflix",
+      },
     ]);
   });
 

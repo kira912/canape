@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, spacing } from "../../constants/theme";
 import { useSession } from "../../lib/household-store";
 import { useIsWide } from "../../lib/layout";
+import { useIsSolo } from "../../lib/queries";
 import { useHouseholdHydrated } from "../../lib/use-hydrated";
 
 export default function TabsLayout() {
@@ -14,6 +15,7 @@ export default function TabsLayout() {
   const token = useSession((s) => s.token);
   const insets = useSafeAreaInsets();
   const isWide = useIsWide();
+  const solo = useIsSolo();
 
   if (!hydrated) return null;
   if (!token) return <Redirect href="/welcome" />;
@@ -81,16 +83,16 @@ export default function TabsLayout() {
         name="favorites"
         options={{
           title: t("tabs.favorites"),
-          headerTitle: t("tabs.favoritesHeader"),
+          headerTitle: solo ? t("tabs.favoritesHeaderSolo") : t("tabs.favoritesHeader"),
           tabBarIcon: ({ color, size }) => <Ionicons name="heart" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: t("tabs.household"),
-          headerTitle: t("tabs.householdHeader"),
-          tabBarIcon: ({ color, size }) => <Ionicons name="people" color={color} size={size} />,
+          title: solo ? t("tabs.profile") : t("tabs.household"),
+          headerTitle: solo ? t("tabs.profileHeader") : t("tabs.householdHeader"),
+          tabBarIcon: ({ color, size }) => <Ionicons name={solo ? "person" : "people"} color={color} size={size} />,
         }}
       />
     </Tabs>

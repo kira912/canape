@@ -12,7 +12,12 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.canape.app",
-      "config": { "usesNonExemptEncryption": false }
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Canapé cherche votre TV connectée sur le Wi-Fi pour y lancer vos plateformes."
+      }
     },
     "android": {
       "package": "com.canape.app"
@@ -22,7 +27,9 @@
       "output": "single",
       "favicon": "./public/icons/icon-192.png"
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router"
+    ],
     "experiments": {
       "typedRoutes": true
     }

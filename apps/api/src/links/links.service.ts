@@ -42,17 +42,18 @@ export class LinksService {
     for (const offer of input.offers) {
       const provider = input.providers.get(offer.providerId);
       if (!provider) continue;
+      const platform = platformForTmdbName(provider.name)?.key ?? null;
 
       const direct = findDirectLink(directOptions, provider, offer.type);
       if (direct) {
-        options.push({ provider, type: offer.type, link: direct, linkKind: "direct" });
+        options.push({ provider, type: offer.type, link: direct, linkKind: "direct", platform });
         continue;
       }
       const search = platformSearchUrl(provider.name, input.title);
       options.push(
         search
-          ? { provider, type: offer.type, link: search, linkKind: "search" }
-          : { provider, type: offer.type, link: input.fallbackLink, linkKind: "fallback" },
+          ? { provider, type: offer.type, link: search, linkKind: "search", platform }
+          : { provider, type: offer.type, link: input.fallbackLink, linkKind: "fallback", platform },
       );
     }
     return options;

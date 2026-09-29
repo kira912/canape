@@ -76,6 +76,11 @@ export const watchOptionSchema = z.object({
   type: offerTypeSchema,
   link: z.string(),
   linkKind: linkKindSchema,
+  /**
+   * Known platform ("netflix", "prime", "disney"…), used to open it on a smart TV.
+   * Defaults to null for title pages cached by the CDN before the field existed.
+   */
+  platform: z.string().nullable().default(null),
 });
 export type WatchOption = z.infer<typeof watchOptionSchema>;
 

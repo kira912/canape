@@ -14,7 +14,7 @@ import {
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams } from "expo-router";
-import { useState, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useState, type ComponentProps, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -28,12 +28,21 @@ import { useSession } from "../../../lib/household-store";
 import { formatRuntime } from "../../../lib/labels";
 import { centered, useIsWide } from "../../../lib/layout";
 import {
+  canOpenOnTv,
+  openOnTv,
+  opensTitleOnTv,
+  TvError,
+  tvControlAvailable,
+  type SavedTv,
+} from "../../../lib/tv/samsung";
+import {
   isInFavorites,
   useFavorites,
   useHouseholdProviderIds,
   useProvidersById,
   useTitle,
   useToggleFavorite,
+  useIsSolo,
   useToggleWatched,
   useWatchers,
 } from "../../../lib/queries";
@@ -51,6 +60,11 @@ export default function TitleScreen() {
   const [showOthers, setShowOthers] = useState(false);
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [watchedSheet, setWatchedSheet] = useState(false);
+  // "Where to watch?": this phone, or the saved smart TV when the platform can be opened on it.
+  const tv = useSession((s) => s.tv);
+  const [target, setTarget] = useState<WatchOption | null>(null);
+  const watch = (option: WatchOption) =>
+    tv && tvControlAvailable && canOpenOnTv(option.platform) ? setTarget(option) : void Linking.openURL(option.link);
   const isWide = useIsWide();
   const insets = useSafeAreaInsets();
 
@@ -115,7 +129,7 @@ export default function TitleScreen() {
 
           {primary && !stickyCta ? (
             <View style={styles.inlineCta}>
-              <PrimaryWatchButton option={primary} />
+              <PrimaryWatchButton option={primary} onWatch={watch} />
             </View>
           ) : null}
 
@@ -125,7 +139,7 @@ export default function TitleScreen() {
             <Section title={translate("title.watch")}>
               {!primary ? <Text style={styles.muted}>{translate("title.notOnYourPlatforms")}</Text> : null}
               {moreMine.map((option) => (
-                <WatchRow key={`${option.provider.id}-${option.type}`} option={option} highlighted />
+                <WatchRow key={`${option.provider.id}-${option.type}`} option={option} onWatch={watch} highlighted />
               ))}
               {others.length ? (
                 <Pressable style={styles.toggle} onPress={() => setShowOthers((v) => !v)}>
@@ -138,9 +152,16 @@ export default function TitleScreen() {
                 </Pressable>
               ) : null}
               {showOthers
-                ? others.map((option) => <WatchRow key={`${option.provider.id}-${option.type}`} option={option} />)
+                ? others.map((option) => (
+                    <WatchRow key={`${option.provider.id}-${option.type}`} option={option} onWatch={watch} />
+                  ))
                 : null}
             </Section>
+          ) : null}
+
+          {/* Platform availability comes from JustWatch (through TMDB), which requires crediting it where shown. */}
+          {t.watchOptions.length || t.seasons?.length ? (
+            <Text style={styles.source}>{translate("title.availabilitySource")}</Text>
           ) : null}
 
           {t.overview ? (
@@ -186,16 +207,16 @@ export default function TitleScreen() {
               ))}
             </Section>
           ) : null}
-
-          <Text style={styles.attribution}>{translate("title.attribution")}</Text>
         </View>
       </ScrollView>
 
       {stickyCta && primary ? (
         <View style={[styles.stickyBar, { paddingBottom: spacing.md + insets.bottom }]}>
-          <PrimaryWatchButton option={primary} />
+          <PrimaryWatchButton option={primary} onWatch={watch} />
         </View>
       ) : null}
+
+      {tv ? <WatchTargetSheet option={target} tv={tv} onClose={() => setTarget(null)} /> : null}
 
       <WatchedSheet
         visible={watchedSheet}
@@ -245,10 +266,10 @@ function Pill({ label, color }: { label: string; color?: string }) {
   );
 }
 
-function PrimaryWatchButton({ option }: { option: WatchOption }) {
+function PrimaryWatchButton({ option, onWatch }: { option: WatchOption; onWatch: (option: WatchOption) => void }) {
   const { t } = useTranslation();
   return (
-    <Pressable style={styles.cta} onPress={() => Linking.openURL(option.link)} accessibilityRole="link">
+    <Pressable style={styles.cta} onPress={() => onWatch(option)} accessibilityRole="button">
       <Ionicons name="play" size={20} color={colors.primaryText} />
       <View style={styles.ctaText}>
         <Text style={styles.ctaTitle} numberOfLines={1}>
@@ -278,20 +299,25 @@ function ActionRow({
   const toggle = useToggleFavorite();
   const memberId = useSession((s) => s.memberId);
   const { watchers } = useWatchers(mediaType, tmdbId);
+  const toggleWatched = useToggleWatched();
+  const solo = useIsSolo();
   const state = isInFavorites(favorites.data, { mediaType, tmdbId });
+  const seenByMe = watchers.some((w) => w.id === memberId);
   const isWide = useIsWide();
   const toggleList = (list: FavoriteList, active: boolean) =>
     toggle.mutate({ ref: { list, mediaType, tmdbId }, add: !active });
 
   return (
     <View style={[styles.actions, isWide && styles.actionsWide]}>
-      <IconAction
-        icon="heart"
-        label={t("title.addToHousehold")}
-        active={state.household}
-        disabled={favorites.isPending || toggle.isPending}
-        onPress={() => toggleList("household", state.household)}
-      />
+      {solo ? null : (
+        <IconAction
+          icon="heart"
+          label={t("title.addToHousehold")}
+          active={state.household}
+          disabled={favorites.isPending || toggle.isPending}
+          onPress={() => toggleList("household", state.household)}
+        />
+      )}
       <IconAction
         icon="bookmark"
         label={t("title.addToMine")}
@@ -302,10 +328,15 @@ function ActionRow({
       <IconAction
         icon="checkmark-circle"
         label={t("title.seenAction")}
-        active={watchers.some((w) => w.id === memberId)}
-        onPress={onOpenWatched}
+        active={seenByMe}
+        // Solo: nobody else to tick for, toggle directly instead of opening the sheet.
+        onPress={() =>
+          solo && memberId
+            ? toggleWatched.mutate({ ref: { mediaType, tmdbId, memberId }, seen: !seenByMe })
+            : onOpenWatched()
+        }
       >
-        <WatchedBadge watchers={watchers} />
+        {solo ? null : <WatchedBadge watchers={watchers} />}
       </IconAction>
     </View>
   );
@@ -347,6 +378,75 @@ function IconAction({
 }
 
 /** "Who has seen it?": one toggle per member; anyone can tick for the other. */
+/** "Where to watch?": open the platform on this phone, or on the smart TV (same Wi-Fi). */
+function WatchTargetSheet({ option, tv, onClose }: { option: WatchOption | null; tv: SavedTv; onClose: () => void }) {
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const [sending, setSending] = useState(false);
+  const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+  useEffect(() => setStatus(null), [option]);
+  if (!option) return null;
+  const provider = option.provider.name;
+
+  const onPhone = () => {
+    onClose();
+    void Linking.openURL(option.link);
+  };
+  const onTv = async () => {
+    setSending(true);
+    setStatus(null);
+    try {
+      const result = await openOnTv(tv, option);
+      setStatus({ ok: true, text: result === "title" ? t("tv.sentTitle") : t("tv.sentApp", { provider }) });
+      setTimeout(onClose, 1800);
+    } catch (error) {
+      const reason = error instanceof TvError ? error.reason : "unreachable";
+      setStatus({
+        ok: false,
+        text: reason === "unsupported" ? t("tv.unsupported", { provider }) : t("tv.unreachable"),
+      });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.sheetBackdrop} onPress={onClose} accessibilityLabel={t("title.close")} />
+      <View style={[styles.sheet, { paddingBottom: spacing.xl + insets.bottom }]}>
+        <View style={styles.sheetHandle} />
+        <Text style={styles.sheetTitle}>{t("tv.where")}</Text>
+        <Pressable style={styles.sheetRow} onPress={onPhone} accessibilityRole="button">
+          <Ionicons name="phone-portrait-outline" size={26} color={colors.text} />
+          <View style={styles.targetText}>
+            <Text style={styles.sheetName}>{t("tv.onPhone")}</Text>
+            <Text style={styles.watchHint}>{t("tv.onPhoneHint", { provider })}</Text>
+          </View>
+        </Pressable>
+        <Pressable
+          style={[styles.sheetRow, styles.sheetRowOn]}
+          onPress={() => !sending && void onTv()}
+          accessibilityRole="button"
+        >
+          <Ionicons name="tv-outline" size={26} color={colors.primary} />
+          <View style={styles.targetText}>
+            <Text style={styles.sheetName}>{t("tv.onTv", { name: tv.name })}</Text>
+            <Text style={styles.watchHint}>
+              {opensTitleOnTv(option) ? t("tv.opensTitle") : t("tv.opensApp", { provider })}
+            </Text>
+          </View>
+          {sending ? <ActivityIndicator color={colors.primary} /> : null}
+        </Pressable>
+        {status ? (
+          <Text style={[styles.targetStatus, { color: status.ok ? colors.success : colors.warning }]}>
+            {status.text}
+          </Text>
+        ) : null}
+      </View>
+    </Modal>
+  );
+}
+
 function WatchedSheet({
   visible,
   mediaType,
@@ -394,14 +494,22 @@ function WatchedSheet({
   );
 }
 
-function WatchRow({ option, highlighted = false }: { option: WatchOption; highlighted?: boolean }) {
+function WatchRow({
+  option,
+  onWatch,
+  highlighted = false,
+}: {
+  option: WatchOption;
+  onWatch: (option: WatchOption) => void;
+  highlighted?: boolean;
+}) {
   const { t } = useTranslation();
   const isWide = useIsWide();
   return (
     <Pressable
       style={[styles.watchRow, isWide && styles.watchRowWide, highlighted && styles.watchRowHighlighted]}
-      onPress={() => Linking.openURL(option.link)}
-      accessibilityRole="link"
+      onPress={() => onWatch(option)}
+      accessibilityRole="button"
     >
       <ProviderLogo provider={option.provider} size={36} />
       <View style={styles.watchText}>
@@ -698,6 +806,9 @@ const styles = StyleSheet.create({
   },
   sheetRowOn: { borderColor: colors.success },
   sheetName: { flex: 1, color: colors.text, fontSize: 16 },
+  targetText: { flex: 1, gap: 2 },
+  targetStatus: { fontSize: 14, fontWeight: "600", textAlign: "center", marginTop: spacing.xs },
 
-  attribution: { color: colors.textMuted, fontSize: 11, textAlign: "center", marginTop: spacing.xl },
+  /** Small, discreet credit right below the availability it refers to. */
+  source: { color: colors.textMuted, fontSize: 11, paddingHorizontal: spacing.lg, marginTop: spacing.sm, opacity: 0.8 },
 });

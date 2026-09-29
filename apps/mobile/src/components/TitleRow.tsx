@@ -55,7 +55,7 @@ export function TitleRow({ title, householdProviderIds, providersById, variant =
         </Text>
         <View style={styles.metaRow}>
           <Text style={styles.meta}>{meta}</Text>
-          <WatchedBadge watchers={watchers} />
+          <WatchedBadge watchers={watchers} showMembers={members.length > 1} />
         </View>
         <OfferStrip offers={offers} providersById={providersById} showTypes={variant === "elsewhere"} />
       </View>
