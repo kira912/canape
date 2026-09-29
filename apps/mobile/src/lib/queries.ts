@@ -3,6 +3,10 @@ import {
   householdSchema,
   meSchema,
   sessionSchema,
+  matchDeckSchema,
+  matchSessionSchema,
+  matchStateSchema,
+  matchVoteResultSchema,
   watchedSchema,
   discoverResponseSchema,
   genreSchema,
@@ -16,6 +20,8 @@ import {
   type JoinHouseholdInput,
   type MediaType,
   type Me,
+  type MatchFiltersInput,
+  type MatchVote,
   type Member,
   type Watched,
   type WatchedRef,
@@ -271,4 +277,56 @@ export function toggleLocally(watched: Watched, ref: WatchedRef, seen: boolean):
   return {
     items: memberIds.length ? [...others, { mediaType: ref.mediaType, tmdbId: ref.tmdbId, memberIds }] : others,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Match
+// ---------------------------------------------------------------------------
+
+/** Polled while the Match tab is open, so a match completed by the other member shows up. */
+export function useMatchState({ poll }: { poll: boolean }) {
+  const token = useSession((s) => s.token);
+  const lang = useLanguageKey();
+  return useQuery({
+    queryKey: ["match", token, lang],
+    queryFn: () => apiGet("/match", matchStateSchema),
+    enabled: Boolean(token),
+    refetchInterval: poll ? 10_000 : false,
+  });
+}
+
+export function useStartMatch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (filters: MatchFiltersInput) => apiRequest("POST", "/match/sessions", matchSessionSchema, filters),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["match"] });
+      void queryClient.removeQueries({ queryKey: ["match-deck"] });
+    },
+  });
+}
+
+/** Cards are consumed locally; the screen refetches when it runs low. */
+export function useMatchDeck(sessionId: string | undefined) {
+  const lang = useLanguageKey();
+  return useQuery({
+    queryKey: ["match-deck", sessionId, lang],
+    queryFn: () => apiGet("/match/deck", matchDeckSchema),
+    enabled: Boolean(sessionId),
+    staleTime: Infinity,
+  });
+}
+
+export const MATCH_VOTE_KEY = ["match-vote"];
+
+export function useMatchVote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: MATCH_VOTE_KEY,
+    mutationFn: (vote: MatchVote) => apiRequest("POST", "/match/votes", matchVoteResultSchema, vote),
+    // My vote completed a match: refresh the list now rather than at the next poll.
+    onSuccess: (result) => {
+      if (result.match) void queryClient.invalidateQueries({ queryKey: ["match"] });
+    },
+  });
 }

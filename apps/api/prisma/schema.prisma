@@ -13,28 +13,30 @@ datasource db {
 }
 
 model Household {
-  id          String     @id @default(uuid())
-  name        String
-  inviteCode  String     @unique
+  id            String         @id @default(uuid())
+  name          String
+  inviteCode    String         @unique
   /// TMDB provider ids of the platforms the household subscribes to.
-  providerIds Int[]
-  createdAt   DateTime   @default(now())
-  members     Member[]
-  favorites   Favorite[]
-  watched     Watched[]
+  providerIds   Int[]
+  createdAt     DateTime       @default(now())
+  members       Member[]
+  favorites     Favorite[]
+  watched       Watched[]
+  matchSessions MatchSession[]
 }
 
 model Member {
-  id          String     @id @default(uuid())
+  id          String      @id @default(uuid())
   householdId String
-  household   Household  @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  household   Household   @relation(fields: [householdId], references: [id], onDelete: Cascade)
   name        String
   color       String
-  createdAt   DateTime   @default(now())
+  createdAt   DateTime    @default(now())
   sessions    Session[]
-  added       Favorite[] @relation("FavoriteAddedBy")
-  personal    Favorite[] @relation("FavoriteOwner")
+  added       Favorite[]  @relation("FavoriteAddedBy")
+  personal    Favorite[]  @relation("FavoriteOwner")
   watched     Watched[]
+  matchVotes  MatchVote[]
 
   @@unique([householdId, name])
 }
@@ -82,4 +84,35 @@ model Watched {
 
   @@unique([memberId, mediaType, tmdbId])
   @@index([householdId])
+}
+
+/// A "Match" evening: shared criteria, every member swipes the same deck.
+model MatchSession {
+  id          String      @id @default(uuid())
+  householdId String
+  household   Household   @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  /// MatchFilters (mediaType, genres, maxRuntime, minRating), validated by the shared zod schema.
+  filters     Json
+  createdById String
+  createdAt   DateTime    @default(now())
+  /// Set when a newer evening is started.
+  closedAt    DateTime?
+  votes       MatchVote[]
+
+  @@index([householdId, closedAt])
+}
+
+model MatchVote {
+  id        String       @id @default(uuid())
+  sessionId String
+  session   MatchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  memberId  String
+  member    Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  mediaType String
+  tmdbId    Int
+  liked     Boolean
+  createdAt DateTime     @default(now())
+
+  @@unique([sessionId, memberId, mediaType, tmdbId])
+  @@index([sessionId, mediaType, tmdbId])
 }

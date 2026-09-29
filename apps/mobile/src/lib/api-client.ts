@@ -1,6 +1,9 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
-import type { ZodType } from "zod";
+import type { ZodType, ZodTypeDef } from "zod";
+
+/** Output type of a schema, even when it has defaults (input ≠ output). */
+type Schema<T> = ZodType<T, ZodTypeDef, unknown>;
 import { currentLanguage } from "../i18n";
 import { useSession } from "./household-store";
 
@@ -48,7 +51,7 @@ export function buildQuery(params: Record<string, QueryValue>): string {
   return parts.length ? `?${parts.join("&")}` : "";
 }
 
-export function apiGet<T>(path: string, schema: ZodType<T>, params: Record<string, QueryValue> = {}): Promise<T> {
+export function apiGet<T>(path: string, schema: Schema<T>, params: Record<string, QueryValue> = {}): Promise<T> {
   // The language goes in the URL (not only Accept-Language): the CDN caches catalog responses by URL.
   return apiRequest("GET", `${path}${buildQuery({ ...params, lang: currentLanguage() })}`, schema);
 }
@@ -57,7 +60,7 @@ export function apiGet<T>(path: string, schema: ZodType<T>, params: Record<strin
 export async function apiRequest<T>(
   method: "GET" | "POST" | "PUT" | "DELETE",
   path: string,
-  schema: ZodType<T> | null,
+  schema: Schema<T> | null,
   body?: unknown,
 ): Promise<T> {
   const token = useSession.getState().token;

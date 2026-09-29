@@ -70,6 +70,14 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="match"
+        options={{
+          title: t("tabs.match"),
+          headerTitle: t("tabs.matchHeader"),
+          tabBarIcon: ({ color, size }) => <Ionicons name="flame" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
         name="favorites"
         options={{
           title: t("tabs.favorites"),
