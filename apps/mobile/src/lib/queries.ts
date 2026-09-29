@@ -3,6 +3,8 @@ import {
   householdSchema,
   meSchema,
   sessionSchema,
+  aiMatchCriteriaResponseSchema,
+  aiSearchResponseSchema,
   matchDeckSchema,
   matchSessionSchema,
   matchStateSchema,
@@ -98,7 +100,7 @@ export function useSearch(query: string, providerIds: number[]) {
   });
 }
 
-export type DiscoverFilters = Omit<DiscoverQuery, "page" | "providers">;
+export type DiscoverFilters = Omit<DiscoverQuery, "page" | "providers" | "keywords" | "originCountries">;
 
 export function useDiscover(filters: DiscoverFilters, providerIds: number[]) {
   const lang = useLanguageKey();
@@ -328,5 +330,29 @@ export function useMatchVote() {
     onSuccess: (result) => {
       if (result.match) void queryClient.invalidateQueries({ queryKey: ["match"] });
     },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// AI (Claude interprets the text; titles still come from TMDB)
+// ---------------------------------------------------------------------------
+
+/** Runs only for a submitted query (not on each keystroke): every call costs money. */
+export function useAiSearch(query: string, providerIds: number[]) {
+  const lang = useLanguageKey();
+  const q = query.trim();
+  return useQuery({
+    queryKey: ["ai-search", q.toLowerCase(), providerIds, lang],
+    queryFn: () => apiGet("/ai/search", aiSearchResponseSchema, { q, providers: providerIds }),
+    enabled: q.length >= 3,
+    staleTime: HOUR,
+    retry: false,
+  });
+}
+
+export function useAiMatchCriteria() {
+  return useMutation({
+    mutationFn: (moods: string[]) =>
+      apiRequest("POST", "/ai/match-criteria", aiMatchCriteriaResponseSchema, { moods }),
   });
 }

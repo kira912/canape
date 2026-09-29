@@ -140,6 +140,10 @@ export const discoverQuerySchema = z.object({
   mediaType: mediaTypeSchema.default("movie"),
   providers: idListSchema,
   genres: idListSchema,
+  /** TMDB keyword ids (any of them). Used by the AI search. */
+  keywords: idListSchema,
+  /** ISO 3166-1 alpha-2 production countries (any of them). Used by the AI search. */
+  originCountries: z.array(z.string().regex(/^[A-Z]{2}$/)).optional(),
   maxRuntime: z.coerce.number().int().positive().optional(),
   minRating: z.coerce.number().min(0).max(10).optional(),
   yearFrom: z.coerce.number().int().optional(),

@@ -28,7 +28,12 @@ describe("CatalogService.search", () => {
         { id: 4, media_type: "movie", title: "Dune (1984)", release_date: "1984-12-14" },
       ],
     },
-    "/movie/1": { id: 1, runtime: 155, genres: [{ id: 878, name: "Science-Fiction" }], "watch/providers": { results: { FR: { flatrate: [NETFLIX], rent: [PRIME] } } } },
+    "/movie/1": {
+      id: 1,
+      runtime: 155,
+      genres: [{ id: 878, name: "Science-Fiction" }],
+      "watch/providers": { results: { FR: { flatrate: [NETFLIX], rent: [PRIME] } } },
+    },
     "/tv/3": {
       id: 3,
       episode_run_time: [],
@@ -148,7 +153,13 @@ describe("CatalogService.getTitle", () => {
     expect(title.cast.map((c) => c.name)).toEqual(["Steve Carell", "John Krasinski"]);
     expect(title.cast[0].photoUrl).toBe("https://image.tmdb.org/t/p/w185/s.jpg");
     expect(title.seasons).toEqual([
-      { seasonNumber: 1, name: "Saison 1", episodeCount: 6, year: 2005, offers: [{ providerId: 119, type: "subscription" }] },
+      {
+        seasonNumber: 1,
+        name: "Saison 1",
+        episodeCount: 6,
+        year: 2005,
+        offers: [{ providerId: 119, type: "subscription" }],
+      },
       { seasonNumber: 2, name: "Saison 2", episodeCount: 22, year: 2005, offers: [{ providerId: 119, type: "buy" }] },
     ]);
     expect(links.buildWatchOptions).toHaveBeenCalledWith(
@@ -163,7 +174,7 @@ describe("CatalogService.discover", () => {
     const service = new CatalogService(tmdb, links);
 
     const result = await service.discover(
-      { mediaType: "movie", providers: [], genres: [], sort: "popularity", page: 1 },
+      { mediaType: "movie", providers: [], genres: [], keywords: [], sort: "popularity", page: 1 },
       "fr",
     );
 
@@ -178,14 +189,18 @@ describe("CatalogService.discover", () => {
     });
     const service = new CatalogService(tmdb, links);
 
-    const result = await service.discover({
-      mediaType: "movie",
-      providers: [8, 119],
-      genres: [35, 18],
-      maxRuntime: 120,
-      sort: "rating",
-      page: 1,
-    }, "en");
+    const result = await service.discover(
+      {
+        mediaType: "movie",
+        providers: [8, 119],
+        genres: [35, 18],
+        keywords: [9713],
+        maxRuntime: 120,
+        sort: "rating",
+        page: 1,
+      },
+      "en",
+    );
 
     expect(result).toMatchObject({ page: 1, totalPages: 3, items: [{ tmdbId: 1 }] });
     expect(tmdb.get).toHaveBeenCalledWith(
@@ -194,6 +209,7 @@ describe("CatalogService.discover", () => {
         with_watch_providers: "8|119",
         with_watch_monetization_types: "flatrate|free|ads",
         with_genres: "35|18",
+        with_keywords: "9713",
         "with_runtime.lte": 120,
         sort_by: "vote_average.desc",
         watch_region: "FR",

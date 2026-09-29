@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { AiModule } from "./ai/ai.module";
 import { CatalogModule } from "./catalog/catalog.module";
 import { FavoritesModule } from "./favorites/favorites.module";
 import { HouseholdModule } from "./household/household.module";
@@ -16,6 +17,7 @@ import { WatchedModule } from "./watched/watched.module";
     FavoritesModule,
     WatchedModule,
     MatchModule,
+    AiModule,
   ],
 })
 export class AppModule {}

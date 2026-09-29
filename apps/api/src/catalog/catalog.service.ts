@@ -121,6 +121,8 @@ export class CatalogService {
       with_watch_providers: query.providers.join("|"),
       with_watch_monetization_types: "flatrate|free|ads",
       with_genres: query.genres.length ? query.genres.join("|") : undefined,
+      with_keywords: query.keywords?.length ? query.keywords.join("|") : undefined,
+      with_origin_country: query.originCountries?.length ? query.originCountries.join("|") : undefined,
       "with_runtime.lte": isMovie ? query.maxRuntime : undefined,
       "vote_average.gte": query.minRating,
       "vote_count.gte": DISCOVER_MIN_VOTES,
@@ -207,6 +209,41 @@ export class CatalogService {
         year: yearOf(season.air_date),
         offers: toOffers(await this.regionProviders(`/tv/${tmdbId}/season/${season.season_number}/watch/providers`)),
       })),
+    );
+  }
+
+  /** TMDB keyword id for an (English) keyword, e.g. "feel-good" → 9713. */
+  keywordId(name: string): Promise<number | null> {
+    return this.cache.getOrLoad(`keyword/${name.toLowerCase()}`, 24 * HOUR, async () => {
+      const page = await this.tmdb.get<TmdbPage<{ id: number; name: string }>>("/search/keyword", { query: name });
+      const exact = page.results.find((k) => k.name.toLowerCase() === name.toLowerCase());
+      return (exact ?? page.results[0])?.id ?? null;
+    });
+  }
+
+  /** Best TMDB match for a title name ("Intouchables"), movie or series. */
+  async findTitle(name: string, language: AppLanguage): Promise<{ mediaType: MediaType; tmdbId: number } | null> {
+    const page = await this.cache.getOrLoad(`find/${language}/${name.toLowerCase()}`, 24 * HOUR, () =>
+      this.tmdb.get<TmdbPage<TmdbListItem>>("/search/multi", {
+        query: name,
+        language: TMDB_LOCALES[language],
+        include_adult: false,
+      }),
+    );
+    const hit = page.results.find((r) => r.media_type === "movie" || r.media_type === "tv");
+    return hit ? { mediaType: hit.media_type as MediaType, tmdbId: hit.id } : null;
+  }
+
+  /** TMDB recommendations for a title, with regional offers. */
+  async recommendations(mediaType: MediaType, tmdbId: number, language: AppLanguage): Promise<TitleSummary[]> {
+    const page = await this.cache.getOrLoad(`reco/${mediaType}/${tmdbId}/${language}`, 6 * HOUR, () =>
+      this.tmdb.get<TmdbPage<TmdbListItem>>(`/${mediaType}/${tmdbId}/recommendations`, {
+        language: TMDB_LOCALES[language],
+      }),
+    );
+    return this.withOffers(
+      page.results.map((item) => ({ item, mediaType })),
+      language,
     );
   }
 

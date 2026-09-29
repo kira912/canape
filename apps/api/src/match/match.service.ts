@@ -97,7 +97,7 @@ export class MatchService {
 
     for (let page = 1; page <= MAX_PAGES_SCANNED && picked.length < DECK_SIZE; page++) {
       const results = await this.catalog.discover(
-        { ...filters, providers: household.providerIds, sort: "popularity", page },
+        { ...filters, keywords: [], providers: household.providerIds, sort: "popularity", page },
         language,
       );
       results.items.forEach(take);

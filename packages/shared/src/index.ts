@@ -4,3 +4,4 @@ export * from "./result-filters";
 export * from "./household";
 export * from "./i18n";
 export * from "./match";
+export * from "./ai";

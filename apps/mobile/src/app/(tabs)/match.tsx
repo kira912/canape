@@ -21,6 +21,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { MatchModal } from "../../components/MatchModal";
 import { PageTitle } from "../../components/PageTitle";
 import { SwipeCard, type SwipeCardHandle } from "../../components/SwipeCard";
+import { TextField } from "../../components/TextField";
 import { TitleRow } from "../../components/TitleRow";
 import { colors, spacing } from "../../constants/theme";
 import { errorMessage } from "../../lib/error-message";
@@ -29,6 +30,7 @@ import { formatRuntime } from "../../lib/labels";
 import { centered } from "../../lib/layout";
 import {
   MATCH_VOTE_KEY,
+  useAiMatchCriteria,
   useGenres,
   useHouseholdProviderIds,
   useMatchDeck,
@@ -151,16 +153,58 @@ function MatchSetup({
   const [minRating, setMinRating] = useState<number | undefined>(initial?.minRating);
   const genreList = useGenres(mediaType);
   const start = useStartMatch();
+  const me = useMe();
+  const members = me.data?.household.members ?? [];
+  const [moods, setMoods] = useState<Record<string, string>>({});
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const suggest = useAiMatchCriteria();
+  // The AI may pick a runtime that isn't one of the chips (e.g. 110 min): show it as an extra chip.
+  const runtimeOptions: number[] =
+    maxRuntime && !(RUNTIME_OPTIONS as readonly number[]).includes(maxRuntime)
+      ? [...RUNTIME_OPTIONS, maxRuntime].sort((a, b) => a - b)
+      : [...RUNTIME_OPTIONS];
 
   const switchMediaType = (next: MediaType) => {
     setMediaType(next);
     setGenres([]); // movie and TV genre ids differ
   };
 
+  const propose = () => {
+    const texts = members.map((m) => moods[m.id]?.trim()).filter((m): m is string => Boolean(m));
+    if (!texts.length) return;
+    suggest.mutate(texts, {
+      onSuccess: ({ filters, explanation: why }) => {
+        setMediaType(filters.mediaType);
+        setGenres(filters.genres);
+        setMaxRuntime(filters.maxRuntime);
+        setMinRating(filters.minRating);
+        setExplanation(why);
+      },
+    });
+  };
+
   return (
     <View style={styles.setup}>
       <Text style={styles.sectionTitle}>{t("match.setupTitle")}</Text>
       <Text style={styles.intro}>{t("match.setupIntro")}</Text>
+
+      <View style={styles.moods}>
+        <Text style={styles.moodsTitle}>{t("ai.moodsTitle")}</Text>
+        <Text style={styles.moodsIntro}>{t("ai.moodsIntro")}</Text>
+        {members.map((member) => (
+          <TextField
+            key={member.id}
+            value={moods[member.id] ?? ""}
+            onChangeText={(text) => setMoods((current) => ({ ...current, [member.id]: text }))}
+            placeholder={t("ai.moodPlaceholder", { name: member.name })}
+            maxLength={200}
+          />
+        ))}
+        <Button label={suggest.isPending ? t("ai.proposing") : t("ai.propose")} variant="ghost" onPress={propose} />
+        {suggest.isError ? <Text style={styles.error}>{errorMessage(t, suggest.error)}</Text> : null}
+        {explanation ? <Text style={styles.explanation}>✨ {explanation}</Text> : null}
+      </View>
+
       <View style={styles.filters}>
         <ChipRow>
           <Chip
@@ -171,7 +215,7 @@ function MatchSetup({
           <Chip label={t("mediaTypePlural.tv")} selected={mediaType === "tv"} onPress={() => switchMediaType("tv")} />
           <ChipSeparator />
           {mediaType === "movie"
-            ? RUNTIME_OPTIONS.map((r) => (
+            ? runtimeOptions.map((r) => (
                 <Chip
                   key={r}
                   label={t("common.underDuration", { duration: formatRuntime(t, r) })}
@@ -405,6 +449,18 @@ const styles = StyleSheet.create({
   sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "700", paddingHorizontal: spacing.lg },
   intro: { color: colors.textMuted, fontSize: 14, lineHeight: 20, paddingHorizontal: spacing.lg },
   filters: { gap: spacing.sm },
+  moods: {
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    padding: spacing.lg,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  moodsTitle: { color: colors.text, fontSize: 16, fontWeight: "800" },
+  moodsIntro: { color: colors.textMuted, fontSize: 13 },
+  explanation: { color: colors.text, fontSize: 14, lineHeight: 20, fontStyle: "italic" },
   setupActions: { gap: spacing.sm, paddingHorizontal: spacing.lg },
   error: { color: "#EB5757", fontSize: 14, paddingHorizontal: spacing.lg },
   evening: { gap: spacing.md, paddingTop: spacing.sm },

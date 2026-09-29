@@ -61,6 +61,8 @@ Un seul projet Vercel, à la racine du monorepo : la PWA est servie par le CDN, 
    | `DIRECT_URL` | URL **directe** Neon (migrations) |
    | `TMDB_API_KEY` | clé TMDB |
    | `STREAMING_AVAILABILITY_API_KEY` | optionnelle |
+   | `LLM_API_KEY` | optionnelle — clé Groq **gratuite**, active la recherche IA et le Match assisté |
+   | `ANTHROPIC_API_KEY` | optionnelle, payante — utilise Claude à la place (prioritaire si renseignée) |
 
 3. **Importer le repo** (GitHub) ou `vercel deploy` depuis la racine. Réglages du projet : Root Directory = racine,
    Framework = Other ; le reste vient de `vercel.json`.
@@ -86,6 +88,17 @@ ne sont pas compris par les versions plus anciennes).
 - Côté app, React Query garde les réponses en mémoire (`staleTime` alignés sur ces durées).
 - Le service worker ne touche jamais `/api` ; il garde l'app shell pour le hors-ligne. Changer sa stratégie ⇒
   incrémenter `CACHE` dans `apps/mobile/public/sw.js`.
+
+## IA
+
+- **Recherche en langage naturel** (✨ dans la barre de recherche) : Claude transforme la phrase en critères
+  (type, genres, durée, note, époque, mots-clés TMDB, « dans le style de »), l'API les résout avec TMDB sur les
+  plateformes du foyer. L'IA ne propose jamais de titre elle-même.
+- **Match assisté** : chacun écrit son envie, Claude propose des critères de compromis + une phrase d'explication.
+- **Fournisseur** : Groq gratuit par défaut (`LLM_API_KEY`, modèle `openai/gpt-oss-120b` en JSON Schema strict ;
+  tout service compatible OpenAI via `LLM_BASE_URL` / `LLM_MODEL`), ou Claude si `ANTHROPIC_API_KEY` est renseignée
+  (`effort: "low"`, `fallbacks: "default"`). Réponses toujours revalidées par zod.
+- 40 appels/heure/foyer, interprétations en cache 24 h. Sans clé, les fonctions IA répondent 503 et le reste marche.
 
 ## Foyer et favoris
 

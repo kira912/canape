@@ -25,7 +25,14 @@ import { errorMessage } from "../../lib/error-message";
 import { RATING_OPTIONS, RUNTIME_OPTIONS } from "../../lib/filter-options";
 import { formatRuntime } from "../../lib/labels";
 import { centered } from "../../lib/layout";
-import { useAllGenres, useHouseholdProviderIds, useMe, useProvidersById, useSearch } from "../../lib/queries";
+import {
+  useAiSearch,
+  useAllGenres,
+  useHouseholdProviderIds,
+  useMe,
+  useProvidersById,
+  useSearch,
+} from "../../lib/queries";
 
 type ViewMode = "list" | "byPlatform";
 
@@ -48,13 +55,20 @@ export default function SearchScreen() {
   const [input, setInput] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const query = useDebounced(input, 350);
+  // AI mode: Claude interprets a description, submitted explicitly (each call costs money).
+  const [aiMode, setAiMode] = useState(false);
+  const [aiQuery, setAiQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [showElsewhere, setShowElsewhere] = useState(false);
   const [sort, setSort] = useState<ResultSort>("relevance");
   const [filters, setFilters] = useState<ResultFilters>({});
   const [genreNames, setGenreNames] = useState<string[]>([]);
   const genres = useAllGenres();
-  const search = useSearch(query, providerIds);
+  const search = useSearch(aiMode ? "" : query, providerIds);
+  const ai = useAiSearch(aiMode ? aiQuery : "", providerIds);
+  const active = aiMode ? ai : search;
+  // AI results are already restricted to the household's platforms: nothing "elsewhere".
+  const source = aiMode ? (ai.data ? { available: ai.data.items, elsewhere: [] } : undefined) : search.data;
   const hasFilters = Boolean(filters.mediaType || filters.maxRuntime || filters.minRating || genreNames.length);
   const genreIds = useMemo(
     () => genres.filter((g) => genreNames.includes(g.name)).flatMap((g) => g.ids),
@@ -63,10 +77,10 @@ export default function SearchScreen() {
 
   // Sorting/filtering is client-side: a search returns at most 20 titles, already fully loaded.
   const results = useMemo(() => {
-    if (!search.data) return undefined;
+    if (!source) return undefined;
     const refine = (items: TitleSummary[]) => sortTitles(filterTitles(items, { ...filters, genreIds }), sort);
-    return { available: refine(search.data.available), elsewhere: refine(search.data.elsewhere) };
-  }, [search.data, filters, genreIds, sort]);
+    return { available: refine(source.available), elsewhere: refine(source.elsewhere) };
+  }, [source, filters, genreIds, sort]);
 
   const toggleFilter = <K extends keyof ResultFilters>(key: K, value: ResultFilters[K]) =>
     setFilters((current) => ({ ...current, [key]: current[key] === value ? undefined : value }));
@@ -117,18 +131,36 @@ export default function SearchScreen() {
 
   const elsewhereCount = results?.elsewhere.length ?? 0;
   const availableCount = results?.available.length ?? 0;
-  const unfilteredCount = (search.data?.available.length ?? 0) + (search.data?.elsewhere.length ?? 0);
+  const unfilteredCount = (source?.available.length ?? 0) + (source?.elsewhere.length ?? 0);
+  const submitAi = () => aiMode && setAiQuery(input);
+  const toggleAi = () => {
+    setAiMode((on) => !on);
+    setAiQuery("");
+  };
 
   return (
     <View style={styles.screen}>
       <View style={centered()}>
         <PageTitle>{t("tabs.searchHeader")}</PageTitle>
         <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
-          <Ionicons name="search" size={18} color={colors.textMuted} />
+          <Pressable
+            onPress={toggleAi}
+            accessibilityRole="switch"
+            aria-checked={aiMode}
+            accessibilityLabel={aiMode ? t("ai.disable") : t("ai.enable")}
+            hitSlop={8}
+          >
+            <Ionicons
+              name={aiMode ? "sparkles" : "search"}
+              size={18}
+              color={aiMode ? colors.primary : colors.textMuted}
+            />
+          </Pressable>
           <TextInput
             value={input}
             onChangeText={setInput}
-            placeholder={t("search.placeholder")}
+            onSubmitEditing={submitAi}
+            placeholder={aiMode ? t("ai.placeholder") : t("search.placeholder")}
             placeholderTextColor={colors.textMuted}
             style={styles.input}
             onFocus={() => setSearchFocused(true)}
@@ -137,7 +169,16 @@ export default function SearchScreen() {
             returnKeyType="search"
             clearButtonMode="while-editing"
           />
-          {search.isFetching ? <ActivityIndicator color={colors.primary} /> : null}
+          {active.isFetching ? <ActivityIndicator color={colors.primary} /> : null}
+          {aiMode ? (
+            <Pressable onPress={submitAi} accessibilityRole="button" accessibilityLabel={t("ai.send")} hitSlop={8}>
+              <Ionicons name="arrow-forward-circle" size={24} color={colors.primary} />
+            </Pressable>
+          ) : (
+            <Pressable onPress={toggleAi} accessibilityRole="button" accessibilityLabel={t("ai.enable")} hitSlop={8}>
+              <Ionicons name="sparkles-outline" size={20} color={colors.primary} />
+            </Pressable>
+          )}
           <Pressable
             onPress={() => setViewMode(viewMode === "list" ? "byPlatform" : "list")}
             accessibilityRole="button"
@@ -201,6 +242,16 @@ export default function SearchScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.list, centered()]}
         stickySectionHeadersEnabled={false}
+        ListHeaderComponent={
+          aiMode && ai.data ? (
+            <View style={styles.aiSummary}>
+              <Ionicons name="sparkles" size={16} color={colors.primary} />
+              <Text style={styles.aiSummaryText}>
+                {t("ai.understood")} → {ai.data.summary}
+              </Text>
+            </View>
+          ) : null
+        }
         renderSectionHeader={({ section }) =>
           section.title ? (
             <View style={styles.sectionHeader}>
@@ -219,17 +270,23 @@ export default function SearchScreen() {
           />
         )}
         ListEmptyComponent={
-          search.isError ? (
+          active.isError ? (
             <EmptyState
               icon="cloud-offline-outline"
               title={t("search.error")}
-              message={errorMessage(t, search.error)}
+              message={errorMessage(t, active.error)}
             />
-          ) : search.data && hasFilters && availableCount + elsewhereCount === 0 && unfilteredCount > 0 ? (
+          ) : aiMode && !ai.data ? (
+            ai.isFetching ? null : (
+              <EmptyState icon="sparkles-outline" title={t("ai.promptTitle")} message={t("ai.promptMessage")} />
+            )
+          ) : aiMode && ai.data && unfilteredCount === 0 ? (
+            <EmptyState icon="sad-outline" title={t("ai.noResults")} />
+          ) : source && hasFilters && availableCount + elsewhereCount === 0 && unfilteredCount > 0 ? (
             <EmptyState icon="funnel-outline" title={t("search.noFilterResults")}>
               <Button label={t("common.clearFilters")} variant="ghost" onPress={clearFilters} />
             </EmptyState>
-          ) : search.data && availableCount === 0 ? (
+          ) : source && availableCount === 0 ? (
             <EmptyState
               icon="sad-outline"
               title={t("search.nothingOnPlatforms")}
@@ -278,6 +335,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   searchBarFocused: { borderColor: colors.primary },
+  aiSummary: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm },
+  aiSummaryText: { flex: 1, color: colors.text, fontSize: 14, fontStyle: "italic" },
   input: { flex: 1, color: colors.text, fontSize: 16, paddingVertical: spacing.md },
   toolbar: { gap: spacing.sm, paddingVertical: spacing.md },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
