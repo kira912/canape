@@ -1,0 +1,11 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+# Metro/Expo requires the hoisted linker to resolve native deps correctly.
+nodeLinker: hoisted
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  prisma: true
+  '@nestjs/core': true
+  esbuild: true

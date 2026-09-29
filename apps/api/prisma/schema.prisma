@@ -1,0 +1,68 @@
+generator client {
+  provider      = "prisma-client-js"
+  /// "rhel-openssl-3.0.x" = Vercel functions runtime (Amazon Linux 2023).
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  /// Pooled connection in production (Neon/Supabase pooler): serverless functions open many short-lived connections.
+  url       = env("DATABASE_URL")
+  /// Direct (non-pooled) connection, used by `prisma migrate`.
+  directUrl = env("DIRECT_URL")
+}
+
+model Household {
+  id          String     @id @default(uuid())
+  name        String
+  inviteCode  String     @unique
+  /// TMDB provider ids of the platforms the household subscribes to.
+  providerIds Int[]
+  createdAt   DateTime   @default(now())
+  members     Member[]
+  favorites   Favorite[]
+}
+
+model Member {
+  id          String     @id @default(uuid())
+  householdId String
+  household   Household  @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  name        String
+  color       String
+  createdAt   DateTime   @default(now())
+  sessions    Session[]
+  added       Favorite[] @relation("FavoriteAddedBy")
+  personal    Favorite[] @relation("FavoriteOwner")
+
+  @@unique([householdId, name])
+}
+
+/// One per device: an opaque bearer token, stored hashed.
+model Session {
+  id         String   @id @default(uuid())
+  memberId   String
+  member     Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+}
+
+model Favorite {
+  id          String    @id @default(uuid())
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  /// `"household"` for the shared list, otherwise the owning member's id
+  /// (a plain column rather than a nullable FK so the unique index below holds:
+  /// Postgres treats NULLs as distinct).
+  listKey     String
+  ownerId     String?
+  owner       Member?   @relation("FavoriteOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  addedById   String
+  addedBy     Member    @relation("FavoriteAddedBy", fields: [addedById], references: [id], onDelete: Cascade)
+  mediaType   String
+  tmdbId      Int
+  createdAt   DateTime  @default(now())
+
+  @@unique([householdId, listKey, mediaType, tmdbId])
+  @@index([householdId, listKey, createdAt])
+}

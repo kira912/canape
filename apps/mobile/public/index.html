@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>%WEB_TITLE%</title>
+    <meta name="description" content="Cherchez un film ou une série sur toutes vos plateformes à la fois." />
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#14111A" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Canapé" />
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      html,
+      body {
+        height: 100%;
+        background-color: #14111a;
+      }
+      body {
+        overflow: hidden;
+      }
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+    <script>
+      // Service workers only run in a secure context (https or localhost).
+      if ("serviceWorker" in navigator && window.isSecureContext) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" });
+        });
+      }
+    </script>
+  </head>
+
+  <body>
+    <noscript>Canapé a besoin de JavaScript.</noscript>
+    <div id="root"></div>
+  </body>
+</html>
