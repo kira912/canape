@@ -50,6 +50,14 @@ export interface TmdbVideo {
   iso_639_1?: string;
 }
 
+export interface TmdbCastEntry {
+  id: number;
+  name: string;
+  character?: string;
+  profile_path: string | null;
+  order?: number;
+}
+
 export interface TmdbSeason {
   season_number: number;
   name: string;
@@ -65,5 +73,6 @@ export interface TmdbDetail extends TmdbListItem {
   number_of_seasons?: number;
   seasons?: TmdbSeason[];
   videos?: { results: TmdbVideo[] };
+  credits?: { cast: TmdbCastEntry[] };
   "watch/providers"?: TmdbWatchProviders;
 }

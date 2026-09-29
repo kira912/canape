@@ -81,7 +81,38 @@ describe("CatalogService.search", () => {
 });
 
 describe("CatalogService.getTitle", () => {
+  // Trailer thumbnails are checked against YouTube: `dead` keys answer 404.
+  const youtube = (dead: string[] = []) =>
+    jest
+      .spyOn(global, "fetch")
+      .mockImplementation(async (url) => ({ ok: !dead.some((key) => String(url).includes(key)) }) as Response);
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it("skips trailers deleted from YouTube", async () => {
+    const check = youtube(["dead1"]);
+    const tmdb = fakeTmdb({
+      "/movie/5": {
+        id: 5,
+        title: "Film",
+        genres: [],
+        videos: {
+          results: [
+            { site: "YouTube", type: "Trailer", key: "dead1", iso_639_1: "fr", official: true },
+            { site: "YouTube", type: "Trailer", key: "alive", iso_639_1: "en" },
+          ],
+        },
+      },
+    });
+
+    const title = await new CatalogService(tmdb, links).getTitle("movie", 5, "fr");
+
+    expect(title.trailerUrl).toBe("https://www.youtube.com/watch?v=alive");
+    expect(check).toHaveBeenCalledTimes(2);
+  });
+
   it("returns per-season availability for series, skipping specials", async () => {
+    youtube();
     const tmdb = fakeTmdb({
       "/tv/10": {
         id: 10,
@@ -96,6 +127,12 @@ describe("CatalogService.getTitle", () => {
           { season_number: 2, name: "Saison 2", episode_count: 22, air_date: "2005-09-20" },
         ],
         videos: { results: [{ site: "YouTube", type: "Trailer", key: "abc", iso_639_1: "en" }] },
+        credits: {
+          cast: [
+            { id: 2, name: "John Krasinski", character: "Jim", profile_path: null, order: 1 },
+            { id: 1, name: "Steve Carell", character: "Michael", profile_path: "/s.jpg", order: 0 },
+          ],
+        },
         "watch/providers": { results: { FR: { link: "https://tmdb/watch", flatrate: [PRIME] } } },
       },
       "/tv/10/season/1/watch/providers": { results: { FR: { flatrate: [PRIME] } } },
@@ -107,6 +144,9 @@ describe("CatalogService.getTitle", () => {
 
     expect(title.runtime).toBe(22);
     expect(title.trailerUrl).toBe("https://www.youtube.com/watch?v=abc");
+    expect(title.trailerThumbnailUrl).toBe("https://img.youtube.com/vi/abc/hqdefault.jpg");
+    expect(title.cast.map((c) => c.name)).toEqual(["Steve Carell", "John Krasinski"]);
+    expect(title.cast[0].photoUrl).toBe("https://image.tmdb.org/t/p/w185/s.jpg");
     expect(title.seasons).toEqual([
       { seasonNumber: 1, name: "Saison 1", episodeCount: 6, year: 2005, offers: [{ providerId: 119, type: "subscription" }] },
       { seasonNumber: 2, name: "Saison 2", episodeCount: 22, year: 2005, offers: [{ providerId: 119, type: "buy" }] },

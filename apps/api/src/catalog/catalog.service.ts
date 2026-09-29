@@ -19,7 +19,9 @@ import { LinksService } from "../links/links.service";
 import { TmdbClient } from "../tmdb/tmdb.client";
 import {
   imageUrl,
-  pickTrailerUrl,
+  trailerCandidates,
+  toCast,
+  type Trailer,
   providersIn,
   toOffers,
   toProvider,
@@ -142,7 +144,7 @@ export class CatalogService {
     const detail = await this.cache.getOrLoad(`detail/${mediaType}/${tmdbId}/${language}`, 6 * HOUR, () =>
       this.tmdb.get<TmdbDetail>(`/${mediaType}/${tmdbId}`, {
         language: TMDB_LOCALES[language],
-        append_to_response: "videos,watch/providers",
+        append_to_response: "videos,watch/providers,credits",
         include_video_language: language === "en" ? "en" : `${language},en`,
       }),
     );
@@ -163,15 +165,35 @@ export class CatalogService {
       mediaType === "tv" ? this.seasonAvailability(tmdbId, detail) : Promise.resolve(null),
     ]);
 
+    const trailer = await this.firstAvailableTrailer(trailerCandidates(detail.videos?.results, language));
     return {
       ...summary,
       backdropUrl: imageUrl(detail.backdrop_path, "w780"),
       genres: detail.genres.map((g) => g.name),
       numberOfSeasons: detail.number_of_seasons ?? null,
-      trailerUrl: pickTrailerUrl(detail.videos?.results, language),
+      trailerUrl: trailer?.url ?? null,
+      trailerThumbnailUrl: trailer?.thumbnailUrl ?? null,
+      cast: toCast(detail.credits?.cast),
       watchOptions,
       seasons,
     };
+  }
+
+  /**
+   * First trailer still online: a deleted YouTube video answers 404 on its
+   * thumbnail. At most 3 checks, cached for a day. A network error keeps the
+   * candidate rather than hiding a trailer on a transient failure.
+   */
+  private async firstAvailableTrailer(candidates: Trailer[]): Promise<Trailer | null> {
+    for (const candidate of candidates.slice(0, 3)) {
+      const online = await this.cache.getOrLoad(`yt/${candidate.thumbnailUrl}`, 24 * HOUR, () =>
+        fetch(candidate.thumbnailUrl, { method: "HEAD" })
+          .then((r) => r.ok)
+          .catch(() => true),
+      );
+      if (online) return candidate;
+    }
+    return null;
   }
 
   /** Per-season offers (TMDB exposes watch providers at season level). Specials (season 0) are skipped. */
@@ -183,9 +205,7 @@ export class CatalogService {
         name: season.name,
         episodeCount: season.episode_count,
         year: yearOf(season.air_date),
-        offers: toOffers(
-          await this.regionProviders(`/tv/${tmdbId}/season/${season.season_number}/watch/providers`),
-        ),
+        offers: toOffers(await this.regionProviders(`/tv/${tmdbId}/season/${season.season_number}/watch/providers`)),
       })),
     );
   }

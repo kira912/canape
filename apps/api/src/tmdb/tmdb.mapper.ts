@@ -1,9 +1,16 @@
-import type { AppLanguage, MediaType, Offer, OfferType, Provider, TitleSummary } from "@canape/shared";
-import type { TmdbDetail, TmdbListItem, TmdbProviderEntry, TmdbRegionProviders, TmdbVideo } from "./tmdb.types";
+import type { AppLanguage, CastMember, MediaType, Offer, OfferType, Provider, TitleSummary } from "@canape/shared";
+import type {
+  TmdbCastEntry,
+  TmdbDetail,
+  TmdbListItem,
+  TmdbProviderEntry,
+  TmdbRegionProviders,
+  TmdbVideo,
+} from "./tmdb.types";
 
 const IMAGE_BASE_URL = "https://image.tmdb.org/t/p";
 
-export function imageUrl(path: string | null | undefined, size: "w92" | "w342" | "w780"): string | null {
+export function imageUrl(path: string | null | undefined, size: "w92" | "w185" | "w342" | "w780"): string | null {
   return path ? `${IMAGE_BASE_URL}/${size}${path}` : null;
 }
 
@@ -74,11 +81,32 @@ export function toTitleSummary(item: TmdbListItem | TmdbDetail, mediaType: Media
   };
 }
 
-/** Prefers an official YouTube trailer in the app language, then any YouTube trailer/teaser. */
-export function pickTrailerUrl(videos: readonly TmdbVideo[] | undefined, language: AppLanguage): string | null {
+/** Main cast in billing order (TMDB lists dozens of extras). */
+export function toCast(cast: readonly TmdbCastEntry[] | undefined, max = 15): CastMember[] {
+  return [...(cast ?? [])]
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .slice(0, max)
+    .map((c) => ({ id: c.id, name: c.name, character: c.character ?? "", photoUrl: imageUrl(c.profile_path, "w185") }));
+}
+
+export interface Trailer {
+  url: string;
+  thumbnailUrl: string;
+}
+
+/**
+ * YouTube trailers/teasers, best first: trailers over teasers, the app
+ * language, then official ones. TMDB sometimes lists videos deleted from
+ * YouTube, hence a list the caller can check in order.
+ */
+export function trailerCandidates(videos: readonly TmdbVideo[] | undefined, language: AppLanguage): Trailer[] {
   const youtube = (videos ?? []).filter((v) => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Teaser"));
   const score = (v: TmdbVideo) =>
     (v.type === "Trailer" ? 4 : 0) + (v.iso_639_1 === language ? 2 : 0) + (v.official ? 1 : 0);
-  const best = [...youtube].sort((a, b) => score(b) - score(a))[0];
-  return best ? `https://www.youtube.com/watch?v=${best.key}` : null;
+  return [...youtube]
+    .sort((a, b) => score(b) - score(a))
+    .map((v) => ({
+      url: `https://www.youtube.com/watch?v=${v.key}`,
+      thumbnailUrl: `https://img.youtube.com/vi/${v.key}/hqdefault.jpg`,
+    }));
 }

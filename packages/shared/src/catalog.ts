@@ -88,11 +88,23 @@ export const seasonAvailabilitySchema = z.object({
 });
 export type SeasonAvailability = z.infer<typeof seasonAvailabilitySchema>;
 
+export const castMemberSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  character: z.string(),
+  photoUrl: z.string().nullable(),
+});
+export type CastMember = z.infer<typeof castMemberSchema>;
+
 export const titleDetailSchema = titleSummarySchema.extend({
   backdropUrl: z.string().nullable(),
   genres: z.array(z.string()),
   numberOfSeasons: z.number().int().nullable(),
   trailerUrl: z.string().nullable(),
+  // Defaults: title pages cached by the CDN before these fields existed must still parse.
+  trailerThumbnailUrl: z.string().nullable().default(null),
+  /** Main cast, billing order. */
+  cast: z.array(castMemberSchema).default([]),
   watchOptions: z.array(watchOptionSchema),
   /** Only for series; `null` for movies. */
   seasons: z.array(seasonAvailabilitySchema).nullable(),

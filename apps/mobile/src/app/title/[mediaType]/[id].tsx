@@ -4,6 +4,7 @@ import {
   mediaTypeSchema,
   seasonCoverage,
   watchableOffers,
+  type CastMember,
   type FavoriteList,
   type MediaType,
   type Provider,
@@ -11,15 +12,19 @@ import {
   type WatchOption,
 } from "@canape/shared";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams } from "expo-router";
-import { useState, type ReactNode } from "react";
+import { useState, type ComponentProps, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState } from "../../../components/EmptyState";
 import { MemberDot } from "../../../components/MemberDot";
 import { ProviderLogo } from "../../../components/ProviderLogo";
+import { WatchedBadge } from "../../../components/WatchedBadge";
 import { colors, radius, spacing } from "../../../constants/theme";
 import { errorMessage } from "../../../lib/error-message";
+import { useSession } from "../../../lib/household-store";
 import { formatRuntime } from "../../../lib/labels";
 import { centered, useIsWide } from "../../../lib/layout";
 import {
@@ -33,6 +38,9 @@ import {
   useWatchers,
 } from "../../../lib/queries";
 
+/** Overviews longer than this start collapsed behind "Read more". */
+const LONG_OVERVIEW = 240;
+
 export default function TitleScreen() {
   const { t: translate } = useTranslation();
   const params = useLocalSearchParams<{ mediaType: string; id: string }>();
@@ -41,7 +49,10 @@ export default function TitleScreen() {
   const providerIds = useHouseholdProviderIds();
   const providersById = useProvidersById();
   const [showOthers, setShowOthers] = useState(false);
+  const [overviewOpen, setOverviewOpen] = useState(false);
+  const [watchedSheet, setWatchedSheet] = useState(false);
   const isWide = useIsWide();
+  const insets = useSafeAreaInsets();
 
   if (title.isPending) {
     return (
@@ -64,173 +75,385 @@ export default function TitleScreen() {
 
   const t = title.data;
   const isMine = (o: WatchOption) => isWatchableOffer({ providerId: o.provider.id, type: o.type }, providerIds);
-  const mine = t.watchOptions.filter(isMine);
+  const [primary, ...moreMine] = t.watchOptions.filter(isMine);
   const others = t.watchOptions.filter((o) => !isMine(o));
   const coverage = t.seasons ? seasonCoverage(t.seasons, providerIds) : null;
   const meta = [
-    translate(`mediaType.${t.mediaType}`),
     t.year,
     t.numberOfSeasons
       ? translate("title.seasonCount", { count: t.numberOfSeasons })
       : formatRuntime(translate, t.runtime),
-    t.rating ? `★ ${t.rating}` : null,
+    t.mediaType === "tv" && t.runtime ? translate("duration.perEpisode", { m: t.runtime }) : null,
   ]
     .filter(Boolean)
     .join(" · ");
+  // Phones: the main action sits in a bar pinned to the bottom; wide screens: inline under the header.
+  const stickyCta = Boolean(primary) && !isWide;
+  const longOverview = t.overview.length > LONG_OVERVIEW;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      {t.backdropUrl ? (
-        <Image source={t.backdropUrl} style={isWide ? styles.backdropWide : styles.backdrop} contentFit="cover" />
-      ) : (
-        <View style={styles.backdropSpacer} />
-      )}
+    <View style={styles.screen}>
+      <ScrollView contentContainerStyle={{ paddingBottom: stickyCta ? 110 + insets.bottom : spacing.xl * 2 }}>
+        <Hero backdropUrl={t.backdropUrl} wide={isWide} />
 
-      <View style={centered()}>
-        <View style={styles.header}>
-          {t.posterUrl ? <Image source={t.posterUrl} style={[styles.poster, isWide && styles.posterWide]} /> : null}
-          <View style={styles.headerText}>
-            <Text style={styles.title}>{t.title}</Text>
-            <Text style={styles.meta}>{meta}</Text>
-            {t.genres.length ? <Text style={styles.meta}>{t.genres.join(", ")}</Text> : null}
-            {coverage === "partial" ? <Badge color={colors.warning} label={translate("title.partial")} /> : null}
+        <View style={centered()}>
+          <View style={styles.header}>
+            {t.posterUrl ? <Image source={t.posterUrl} style={[styles.poster, isWide && styles.posterWide]} /> : null}
+            <View style={styles.headerText}>
+              <Text style={[styles.title, isWide && styles.titleWide]}>{t.title}</Text>
+              {meta ? <Text style={styles.meta}>{meta}</Text> : null}
+              <View style={styles.badges}>
+                {t.rating ? <RatingBadge rating={t.rating} /> : null}
+                <Pill label={translate(`mediaType.${t.mediaType}`)} />
+                {t.genres.slice(0, 3).map((g) => (
+                  <Pill key={g} label={g} />
+                ))}
+              </View>
+              {coverage === "partial" ? <Pill label={translate("title.partial")} color={colors.warning} /> : null}
+            </View>
           </View>
-        </View>
 
-        <FavoriteButtons mediaType={t.mediaType} tmdbId={t.tmdbId} />
-        <WatchedToggles mediaType={t.mediaType} tmdbId={t.tmdbId} />
-
-        <Section title={translate("title.watch")}>
-          {mine.length ? (
-            mine.map((option) => <WatchButton key={`${option.provider.id}-${option.type}`} option={option} primary />)
-          ) : (
-            <Text style={styles.muted}>{translate("title.notOnYourPlatforms")}</Text>
-          )}
-          {others.length ? (
-            <Pressable style={styles.toggle} onPress={() => setShowOthers((v) => !v)}>
-              <Text style={styles.toggleLabel}>
-                {showOthers
-                  ? translate("title.hideOtherOptions")
-                  : translate("title.otherOptions", { count: others.length })}
-              </Text>
-              <Ionicons name={showOthers ? "chevron-up" : "chevron-down"} size={16} color={colors.textMuted} />
-            </Pressable>
+          {primary && !stickyCta ? (
+            <View style={styles.inlineCta}>
+              <PrimaryWatchButton option={primary} />
+            </View>
           ) : null}
-          {showOthers
-            ? others.map((option) => <WatchButton key={`${option.provider.id}-${option.type}`} option={option} />)
-            : null}
-        </Section>
 
-        {t.overview ? (
-          <Section title={translate("title.overview")}>
-            <Text style={styles.overview}>{t.overview}</Text>
-          </Section>
-        ) : null}
+          <ActionRow mediaType={t.mediaType} tmdbId={t.tmdbId} onOpenWatched={() => setWatchedSheet(true)} />
 
-        {t.seasons?.length ? (
-          <Section title={translate("title.seasons")}>
-            {t.seasons.map((season) => (
-              <SeasonRow
-                key={season.seasonNumber}
-                season={season}
-                providerIds={providerIds}
-                providersById={providersById}
-              />
-            ))}
-          </Section>
-        ) : null}
+          {moreMine.length || !primary || others.length ? (
+            <Section title={translate("title.watch")}>
+              {!primary ? <Text style={styles.muted}>{translate("title.notOnYourPlatforms")}</Text> : null}
+              {moreMine.map((option) => (
+                <WatchRow key={`${option.provider.id}-${option.type}`} option={option} highlighted />
+              ))}
+              {others.length ? (
+                <Pressable style={styles.toggle} onPress={() => setShowOthers((v) => !v)}>
+                  <Text style={styles.toggleLabel}>
+                    {showOthers
+                      ? translate("title.hideOtherOptions")
+                      : translate("title.otherOptions", { count: others.length })}
+                  </Text>
+                  <Ionicons name={showOthers ? "chevron-up" : "chevron-down"} size={16} color={colors.textMuted} />
+                </Pressable>
+              ) : null}
+              {showOthers
+                ? others.map((option) => <WatchRow key={`${option.provider.id}-${option.type}`} option={option} />)
+                : null}
+            </Section>
+          ) : null}
 
-        {t.trailerUrl ? (
-          <Pressable style={styles.trailer} onPress={() => Linking.openURL(t.trailerUrl!)}>
-            <Ionicons name="play-circle" size={20} color={colors.text} />
-            <Text style={styles.trailerLabel}>{translate("title.trailer")}</Text>
-          </Pressable>
-        ) : null}
+          {t.overview ? (
+            <Section title={translate("title.overview")}>
+              <Text style={styles.overview} numberOfLines={longOverview && !overviewOpen ? 4 : undefined}>
+                {t.overview}
+              </Text>
+              {longOverview ? (
+                <Pressable onPress={() => setOverviewOpen((v) => !v)} hitSlop={8}>
+                  <Text style={styles.readMore}>
+                    {overviewOpen ? translate("title.readLess") : translate("title.readMore")}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </Section>
+          ) : null}
 
-        <Text style={styles.attribution}>{translate("title.attribution")}</Text>
-      </View>
-    </ScrollView>
+          {t.trailerUrl ? (
+            <Section title={translate("title.trailer")}>
+              <TrailerCard url={t.trailerUrl} thumbnailUrl={t.trailerThumbnailUrl} wide={isWide} />
+            </Section>
+          ) : null}
+
+          {t.cast.length ? (
+            <Section title={translate("title.cast")} flush>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.castRow}>
+                {t.cast.map((person) => (
+                  <CastCard key={person.id} person={person} />
+                ))}
+              </ScrollView>
+            </Section>
+          ) : null}
+
+          {t.seasons?.length ? (
+            <Section title={translate("title.seasons")}>
+              {t.seasons.map((season) => (
+                <SeasonRow
+                  key={season.seasonNumber}
+                  season={season}
+                  providerIds={providerIds}
+                  providersById={providersById}
+                />
+              ))}
+            </Section>
+          ) : null}
+
+          <Text style={styles.attribution}>{translate("title.attribution")}</Text>
+        </View>
+      </ScrollView>
+
+      {stickyCta && primary ? (
+        <View style={[styles.stickyBar, { paddingBottom: spacing.md + insets.bottom }]}>
+          <PrimaryWatchButton option={primary} />
+        </View>
+      ) : null}
+
+      <WatchedSheet
+        visible={watchedSheet}
+        mediaType={t.mediaType}
+        tmdbId={t.tmdbId}
+        onClose={() => setWatchedSheet(false)}
+      />
+    </View>
   );
 }
 
-function FavoriteButtons({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: number }) {
+/** Backdrop fading into the page, with a light scrim on top so the back arrow stays readable. */
+function Hero({ backdropUrl, wide }: { backdropUrl: string | null; wide: boolean }) {
+  if (!backdropUrl) return <View style={styles.heroSpacer} />;
+  return (
+    <View style={wide ? styles.heroWide : styles.hero}>
+      <Image source={backdropUrl} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+      <LinearGradient
+        colors={["rgba(20, 17, 26, 0.65)", "rgba(20, 17, 26, 0)"]}
+        style={styles.heroTopScrim}
+        pointerEvents="none"
+      />
+      <LinearGradient
+        colors={["rgba(20, 17, 26, 0)", "rgba(20, 17, 26, 0.6)", colors.background]}
+        locations={[0.35, 0.7, 1]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+    </View>
+  );
+}
+
+function RatingBadge({ rating }: { rating: number }) {
+  return (
+    <View style={styles.rating}>
+      <Ionicons name="star" size={12} color={colors.warning} />
+      <Text style={styles.ratingLabel}>{rating.toFixed(1)}</Text>
+    </View>
+  );
+}
+
+function Pill({ label, color }: { label: string; color?: string }) {
+  return (
+    <View style={[styles.pill, color ? { borderColor: color } : null]}>
+      <Text style={[styles.pillLabel, color ? { color } : null]}>{label}</Text>
+    </View>
+  );
+}
+
+function PrimaryWatchButton({ option }: { option: WatchOption }) {
+  const { t } = useTranslation();
+  return (
+    <Pressable style={styles.cta} onPress={() => Linking.openURL(option.link)} accessibilityRole="link">
+      <Ionicons name="play" size={20} color={colors.primaryText} />
+      <View style={styles.ctaText}>
+        <Text style={styles.ctaTitle} numberOfLines={1}>
+          {t("title.watchOn", { provider: option.provider.name })}
+        </Text>
+        <Text style={styles.ctaHint} numberOfLines={1}>
+          {t(`offerType.${option.type}`)} · {t(`linkKind.${option.linkKind}`)}
+        </Text>
+      </View>
+      <ProviderLogo provider={option.provider} size={32} />
+    </Pressable>
+  );
+}
+
+/** Secondary actions as compact icon buttons: shared list, my list, seen. */
+function ActionRow({
+  mediaType,
+  tmdbId,
+  onOpenWatched,
+}: {
+  mediaType: MediaType;
+  tmdbId: number;
+  onOpenWatched: () => void;
+}) {
+  const { t } = useTranslation();
   const favorites = useFavorites();
   const toggle = useToggleFavorite();
-  const { t } = useTranslation();
-  const isWide = useIsWide();
+  const memberId = useSession((s) => s.memberId);
+  const { watchers } = useWatchers(mediaType, tmdbId);
   const state = isInFavorites(favorites.data, { mediaType, tmdbId });
+  const isWide = useIsWide();
+  const toggleList = (list: FavoriteList, active: boolean) =>
+    toggle.mutate({ ref: { list, mediaType, tmdbId }, add: !active });
 
-  const button = (list: FavoriteList, active: boolean, icon: "heart" | "bookmark", label: string) => (
+  return (
+    <View style={[styles.actions, isWide && styles.actionsWide]}>
+      <IconAction
+        icon="heart"
+        label={t("title.addToHousehold")}
+        active={state.household}
+        disabled={favorites.isPending || toggle.isPending}
+        onPress={() => toggleList("household", state.household)}
+      />
+      <IconAction
+        icon="bookmark"
+        label={t("title.addToMine")}
+        active={state.mine}
+        disabled={favorites.isPending || toggle.isPending}
+        onPress={() => toggleList("me", state.mine)}
+      />
+      <IconAction
+        icon="checkmark-circle"
+        label={t("title.seenAction")}
+        active={watchers.some((w) => w.id === memberId)}
+        onPress={onOpenWatched}
+      >
+        <WatchedBadge watchers={watchers} />
+      </IconAction>
+    </View>
+  );
+}
+
+function IconAction({
+  icon,
+  label,
+  active,
+  disabled,
+  onPress,
+  children,
+}: {
+  icon: "heart" | "bookmark" | "checkmark-circle";
+  label: string;
+  active: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+  children?: ReactNode;
+}) {
+  const name: ComponentProps<typeof Ionicons>["name"] = active ? icon : `${icon}-outline`;
+  return (
     <Pressable
-      style={[styles.favoriteButton, isWide && styles.favoriteButtonWide, active && styles.favoriteButtonActive]}
-      onPress={() => toggle.mutate({ ref: { list, mediaType, tmdbId }, add: !active })}
-      disabled={favorites.isPending || toggle.isPending}
+      style={styles.action}
+      onPress={onPress}
+      disabled={disabled}
       accessibilityRole="button"
       aria-pressed={active}
     >
-      <Ionicons name={active ? icon : `${icon}-outline`} size={18} color={active ? colors.primaryText : colors.text} />
-      <Text style={[styles.favoriteLabel, active && styles.favoriteLabelActive]}>{label}</Text>
+      <View style={[styles.actionIcon, active && styles.actionIconActive]}>
+        <Ionicons name={name} size={22} color={active ? colors.primaryText : colors.text} />
+      </View>
+      <Text style={[styles.actionLabel, active && styles.actionLabelActive]} numberOfLines={1}>
+        {label}
+      </Text>
+      {children}
     </Pressable>
-  );
-
-  return (
-    <View style={styles.favorites}>
-      {button("household", state.household, "heart", t("title.addToHousehold"))}
-      {button("me", state.mine, "bookmark", t("title.addToMine"))}
-    </View>
   );
 }
 
-/** One toggle per household member: anyone can tick for the other ("elle l'a vu"). */
-function WatchedToggles({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: number }) {
+/** "Who has seen it?": one toggle per member; anyone can tick for the other. */
+function WatchedSheet({
+  visible,
+  mediaType,
+  tmdbId,
+  onClose,
+}: {
+  visible: boolean;
+  mediaType: MediaType;
+  tmdbId: number;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
   const { watchers, members } = useWatchers(mediaType, tmdbId);
   const toggle = useToggleWatched();
-  if (members.length === 0) return null;
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.watched}>
-      <Text style={styles.watchedLabel}>{t("watched.title")}</Text>
-      {members.map((member) => {
-        const seen = watchers.some((w) => w.id === member.id);
-        return (
-          <Pressable
-            key={member.id}
-            style={[styles.watchedChip, seen && styles.watchedChipOn]}
-            onPress={() => toggle.mutate({ ref: { mediaType, tmdbId, memberId: member.id }, seen: !seen })}
-            accessibilityRole="checkbox"
-            aria-checked={seen}
-            accessibilityLabel={t("watched.toggle", { name: member.name })}
-          >
-            <MemberDot member={member} size={18} />
-            <Text style={styles.watchedName}>{member.name}</Text>
-            {seen ? <Ionicons name="checkmark" size={16} color={colors.success} /> : null}
-          </Pressable>
-        );
-      })}
-    </View>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.sheetBackdrop} onPress={onClose} accessibilityLabel={t("title.close")} />
+      <View style={[styles.sheet, { paddingBottom: spacing.xl + insets.bottom }]}>
+        <View style={styles.sheetHandle} />
+        <Text style={styles.sheetTitle}>{t("title.whoSaw")}</Text>
+        {members.map((member) => {
+          const seen = watchers.some((w) => w.id === member.id);
+          return (
+            <Pressable
+              key={member.id}
+              style={[styles.sheetRow, seen && styles.sheetRowOn]}
+              onPress={() => toggle.mutate({ ref: { mediaType, tmdbId, memberId: member.id }, seen: !seen })}
+              accessibilityRole="checkbox"
+              aria-checked={seen}
+              accessibilityLabel={t("watched.toggle", { name: member.name })}
+            >
+              <MemberDot member={member} size={28} />
+              <Text style={styles.sheetName}>{member.name}</Text>
+              <Ionicons
+                name={seen ? "checkmark-circle" : "ellipse-outline"}
+                size={24}
+                color={seen ? colors.success : colors.textMuted}
+              />
+            </Pressable>
+          );
+        })}
+      </View>
+    </Modal>
   );
 }
 
-function WatchButton({ option, primary = false }: { option: WatchOption; primary?: boolean }) {
+function WatchRow({ option, highlighted = false }: { option: WatchOption; highlighted?: boolean }) {
   const { t } = useTranslation();
   const isWide = useIsWide();
   return (
     <Pressable
-      style={[styles.watchButton, isWide && styles.watchButtonWide, primary && styles.watchButtonPrimary]}
+      style={[styles.watchRow, isWide && styles.watchRowWide, highlighted && styles.watchRowHighlighted]}
       onPress={() => Linking.openURL(option.link)}
       accessibilityRole="link"
     >
       <ProviderLogo provider={option.provider} size={36} />
       <View style={styles.watchText}>
         <Text style={styles.watchTitle}>
-          {primary ? t("title.watchOn", { provider: option.provider.name }) : option.provider.name}
+          {highlighted ? t("title.watchOn", { provider: option.provider.name }) : option.provider.name}
         </Text>
         <Text style={styles.watchHint}>
           {t(`offerType.${option.type}`)} · {t(`linkKind.${option.linkKind}`)}
         </Text>
       </View>
-      <Ionicons name="open-outline" size={18} color={primary ? colors.primary : colors.textMuted} />
+      <Ionicons name="open-outline" size={18} color={highlighted ? colors.primary : colors.textMuted} />
     </Pressable>
+  );
+}
+
+function TrailerCard({ url, thumbnailUrl, wide }: { url: string; thumbnailUrl: string | null; wide: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <Pressable
+      style={[styles.trailer, wide && styles.trailerWide]}
+      onPress={() => Linking.openURL(url)}
+      accessibilityRole="link"
+      accessibilityLabel={t("title.trailer")}
+    >
+      {thumbnailUrl ? <Image source={thumbnailUrl} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+      <View style={styles.trailerShade} />
+      <View style={styles.playButton}>
+        <Ionicons name="play" size={28} color={colors.primaryText} />
+      </View>
+    </Pressable>
+  );
+}
+
+function CastCard({ person }: { person: CastMember }) {
+  return (
+    <View style={styles.castCard}>
+      {person.photoUrl ? (
+        <Image source={person.photoUrl} style={styles.castPhoto} contentFit="cover" transition={150} />
+      ) : (
+        <View style={[styles.castPhoto, styles.castPlaceholder]}>
+          <Ionicons name="person" size={28} color={colors.textMuted} />
+        </View>
+      )}
+      <Text style={styles.castName} numberOfLines={2}>
+        {person.name}
+      </Text>
+      {person.character ? (
+        <Text style={styles.castCharacter} numberOfLines={2}>
+          {person.character}
+        </Text>
+      ) : null}
+    </View>
   );
 }
 
@@ -267,19 +490,12 @@ function SeasonRow({
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+/** `flush`: content handles its own horizontal padding (e.g. an edge-to-edge carousel). */
+function Section({ title, children, flush = false }: { title: string; children: ReactNode; flush?: boolean }) {
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+    <View style={[styles.section, flush && styles.sectionFlush]}>
+      <Text style={[styles.sectionTitle, flush && styles.sectionTitleFlush]}>{title}</Text>
       {children}
-    </View>
-  );
-}
-
-function Badge({ label, color }: { label: string; color: string }) {
-  return (
-    <View style={[styles.badge, { borderColor: color }]}>
-      <Text style={[styles.badgeLabel, { color }]}>{label}</Text>
     </View>
   );
 }
@@ -287,69 +503,111 @@ function Badge({ label, color }: { label: string; color: string }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   center: { alignItems: "center", justifyContent: "center" },
-  content: { paddingBottom: spacing.xl * 2 },
-  backdrop: { width: "100%", aspectRatio: 16 / 9, opacity: 0.55 },
+
+  hero: { width: "100%", aspectRatio: 16 / 10 },
   /** 16:9 on a desktop window would be ~800px tall. */
-  backdropWide: { width: "100%", height: 380, opacity: 0.55 },
-  backdropSpacer: { height: 100 },
-  header: { flexDirection: "row", gap: spacing.lg, paddingHorizontal: spacing.lg, marginTop: -56 },
-  poster: { width: 100, height: 150, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
-  posterWide: { width: 140, height: 210 },
-  headerText: { flex: 1, justifyContent: "flex-end", gap: 4 },
-  title: { color: colors.text, fontSize: 22, fontWeight: "800" },
-  meta: { color: colors.textMuted, fontSize: 13 },
-  badge: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    marginTop: 4,
-  },
-  badgeLabel: { fontSize: 12, fontWeight: "600" },
-  section: { paddingHorizontal: spacing.lg, marginTop: spacing.xl, gap: spacing.sm },
-  favorites: { flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.lg, marginTop: spacing.lg },
-  favoriteButton: {
-    flex: 1,
+  heroWide: { width: "100%", height: 420 },
+  heroSpacer: { height: 100 },
+  heroTopScrim: { position: "absolute", top: 0, left: 0, right: 0, height: 110 },
+
+  header: {
     flexDirection: "row",
+    alignItems: "flex-end",
+    gap: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    marginTop: -90,
+  },
+  poster: {
+    width: 110,
+    height: 165,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceRaised,
+  },
+  posterWide: { width: 160, height: 240 },
+  headerText: { flex: 1, gap: spacing.sm, paddingBottom: spacing.xs },
+  title: { color: colors.text, fontSize: 26, fontWeight: "800", lineHeight: 31 },
+  titleWide: { fontSize: 34, lineHeight: 40 },
+  meta: { color: colors.textMuted, fontSize: 14 },
+  badges: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.xs },
+  rating: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(242, 201, 76, 0.15)",
+  },
+  ratingLabel: { color: colors.warning, fontSize: 12, fontWeight: "800" },
+  pill: {
+    alignSelf: "flex-start",
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pillLabel: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
+
+  inlineCta: { paddingHorizontal: spacing.lg, marginTop: spacing.xl, maxWidth: 480 },
+  cta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
+  },
+  ctaText: { flex: 1 },
+  ctaTitle: { color: colors.primaryText, fontSize: 16, fontWeight: "800" },
+  ctaHint: { color: colors.primaryText, fontSize: 12, opacity: 0.75 },
+  stickyBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: "rgba(20, 17, 26, 0.96)",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+
+  actions: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xl,
+  },
+  /** Wide screens: grouped under the main button instead of spread across the column. */
+  actionsWide: { justifyContent: "flex-start", gap: spacing.xl },
+  action: { alignItems: "center", gap: 6, minWidth: 88 },
+  actionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  /** Sized to the label on wide screens instead of splitting the column in two. */
-  favoriteButtonWide: { flexGrow: 0, flexShrink: 0, flexBasis: "auto", paddingHorizontal: spacing.xl },
-  favoriteButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  watched: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.md,
-  },
-  watchedLabel: { color: colors.textMuted, fontSize: 14, marginRight: spacing.xs },
-  watchedChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  watchedChipOn: { borderColor: colors.success, backgroundColor: colors.surface },
-  watchedName: { color: colors.text, fontSize: 14 },
-  favoriteLabel: { color: colors.text, fontSize: 14, fontWeight: "600" },
-  favoriteLabelActive: { color: colors.primaryText },
-  sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "700" },
+  actionIconActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  actionLabel: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
+  actionLabelActive: { color: colors.text },
+
+  section: { paddingHorizontal: spacing.lg, marginTop: spacing.xl, gap: spacing.sm },
+  sectionFlush: { paddingHorizontal: 0 },
+  sectionTitle: { color: colors.text, fontSize: 18, fontWeight: "800" },
+  sectionTitleFlush: { paddingHorizontal: spacing.lg },
   muted: { color: colors.textMuted, fontSize: 14 },
-  overview: { color: colors.text, fontSize: 15, lineHeight: 22 },
-  watchButton: {
+  overview: { color: colors.text, fontSize: 15, lineHeight: 23 },
+  readMore: { color: colors.primary, fontSize: 14, fontWeight: "700" },
+
+  watchRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
@@ -359,13 +617,42 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  watchButtonWide: { maxWidth: 560 },
-  watchButtonPrimary: { borderColor: colors.primary },
+  watchRowWide: { maxWidth: 560 },
+  watchRowHighlighted: { borderColor: colors.primary },
   watchText: { flex: 1, gap: 2 },
   watchTitle: { color: colors.text, fontSize: 15, fontWeight: "600" },
   watchHint: { color: colors.textMuted, fontSize: 12 },
   toggle: { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingVertical: spacing.sm },
   toggleLabel: { color: colors.textMuted, fontSize: 14, fontWeight: "600" },
+
+  trailer: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    borderRadius: radius.lg,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surfaceRaised,
+  },
+  trailerWide: { maxWidth: 560 },
+  trailerShade: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(20, 17, 26, 0.25)" },
+  playButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingLeft: 4,
+    backgroundColor: colors.primary,
+  },
+
+  castRow: { gap: spacing.md, paddingHorizontal: spacing.lg },
+  castCard: { width: 88, gap: 4 },
+  castPhoto: { width: 88, height: 88, borderRadius: 44, backgroundColor: colors.surfaceRaised },
+  castPlaceholder: { alignItems: "center", justifyContent: "center" },
+  castName: { color: colors.text, fontSize: 13, fontWeight: "600", textAlign: "center" },
+  castCharacter: { color: colors.textMuted, fontSize: 12, textAlign: "center" },
+
   seasonRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -378,18 +665,39 @@ const styles = StyleSheet.create({
   seasonName: { color: colors.text, fontSize: 15 },
   seasonLogos: { flexDirection: "row", gap: spacing.xs },
   seasonMissing: { color: colors.textMuted, fontSize: 12, fontStyle: "italic" },
-  trailer: {
+
+  sheetBackdrop: { flex: 1, backgroundColor: "rgba(10, 8, 14, 0.6)" },
+  sheet: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    backgroundColor: colors.surface,
+    width: "100%",
+    maxWidth: 520,
+    alignSelf: "center",
+  },
+  sheetHandle: {
+    alignSelf: "center",
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    marginBottom: spacing.sm,
+  },
+  sheetTitle: { color: colors.text, fontSize: 18, fontWeight: "800", marginBottom: spacing.xs },
+  sheetRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    alignSelf: "flex-start",
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.xl,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceRaised,
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  trailerLabel: { color: colors.text, fontSize: 14, fontWeight: "600" },
+  sheetRowOn: { borderColor: colors.success },
+  sheetName: { flex: 1, color: colors.text, fontSize: 16 },
+
   attribution: { color: colors.textMuted, fontSize: 11, textAlign: "center", marginTop: spacing.xl },
 });
