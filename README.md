@@ -50,7 +50,9 @@ Puis ouvrir l'URL https sur le téléphone :
 Un seul projet Vercel, à la racine du monorepo : la PWA est servie par le CDN, l'API NestJS tourne en fonction
 (`api/index.js` → `apps/api/dist/serverless.js`) sur la même origine (`/api`). Tout est décrit dans `vercel.json`.
 
-1. **Base de données** : Vercel → Storage / Marketplace → **Neon** (Postgres), reliée au projet.
+1. **Base de données** : Vercel → Storage / Marketplace → **Neon** (Postgres), reliée au projet, région
+   **AWS Frankfurt (`eu-central-1`)** — la même que les fonctions (`"regions": ["fra1"]` dans `vercel.json`),
+   sinon chaque requête SQL traverse l'Atlantique (fonctions Vercel par défaut à Washington).
 2. **Variables d'environnement** (Production, et Preview avec une base séparée) :
 
    | Variable | Valeur |
