@@ -4,9 +4,11 @@ import { useTranslation } from "react-i18next";
 import { ActivityIndicator, SectionList, StyleSheet, Text, View } from "react-native";
 import { Chip } from "../../components/Chip";
 import { EmptyState } from "../../components/EmptyState";
+import { PageTitle } from "../../components/PageTitle";
 import { MemberDot } from "../../components/MemberDot";
 import { TitleRow } from "../../components/TitleRow";
 import { colors, spacing } from "../../constants/theme";
+import { centered } from "../../lib/layout";
 import { errorMessage } from "../../lib/error-message";
 import { useFavorites, useHouseholdProviderIds, useMe, useProvidersById } from "../../lib/queries";
 
@@ -17,10 +19,7 @@ export default function FavoritesScreen() {
   const me = useMe();
   const providerIds = useHouseholdProviderIds();
   const providersById = useProvidersById();
-  const membersById = useMemo(
-    () => new Map((me.data?.household.members ?? []).map((m) => [m.id, m])),
-    [me.data],
-  );
+  const membersById = useMemo(() => new Map((me.data?.household.members ?? []).map((m) => [m.id, m])), [me.data]);
 
   const items = list === "household" ? favorites.data?.household : favorites.data?.mine;
   // What we can watch tonight first; the rest stays in the list for later.
@@ -38,7 +37,10 @@ export default function FavoritesScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.tabs}>
+      <View style={centered()}>
+        <PageTitle>{t("tabs.favoritesHeader")}</PageTitle>
+      </View>
+      <View style={[styles.tabs, centered()]}>
         <Chip
           label={t("favorites.householdTab", { count: favorites.data?.household.length ?? 0 })}
           selected={list === "household"}
@@ -53,7 +55,7 @@ export default function FavoritesScreen() {
       <SectionList
         sections={sections}
         keyExtractor={(item: FavoriteItem) => `${item.title.mediaType}-${item.title.tmdbId}`}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, centered()]}
         stickySectionHeadersEnabled={false}
         renderSectionHeader={({ section }) => <Text style={styles.sectionTitle}>{section.title}</Text>}
         renderItem={({ item, section }) => (
@@ -69,7 +71,11 @@ export default function FavoritesScreen() {
           favorites.isPending ? (
             <ActivityIndicator color={colors.primary} style={styles.loader} />
           ) : favorites.isError ? (
-            <EmptyState icon="cloud-offline-outline" title={t("common.loadingError")} message={errorMessage(t, favorites.error)} />
+            <EmptyState
+              icon="cloud-offline-outline"
+              title={t("common.loadingError")}
+              message={errorMessage(t, favorites.error)}
+            />
           ) : (
             <EmptyState
               icon={list === "household" ? "heart-outline" : "bookmark-outline"}
@@ -87,6 +93,12 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   tabs: { flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
-  sectionTitle: { color: colors.text, fontSize: 15, fontWeight: "700", marginTop: spacing.md, marginBottom: spacing.xs },
+  sectionTitle: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "700",
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
   loader: { marginVertical: spacing.xl },
 });

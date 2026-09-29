@@ -30,6 +30,14 @@
         height: 100%;
         flex: 1;
       }
+      /* Inputs draw their own focus state (TextField / search bar). */
+      input,
+      textarea {
+        outline: none;
+      }
+      * {
+        scrollbar-color: #342c40 transparent;
+      }
     </style>
     <script>
       // Service workers only run in a secure context (https or localhost).

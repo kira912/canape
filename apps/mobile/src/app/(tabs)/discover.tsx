@@ -7,11 +7,13 @@ import { Button } from "../../components/Button";
 import { Chip } from "../../components/Chip";
 import { ChipRow, ChipSeparator } from "../../components/ChipRow";
 import { EmptyState } from "../../components/EmptyState";
+import { PageTitle } from "../../components/PageTitle";
 import { TitleRow } from "../../components/TitleRow";
 import { colors, spacing } from "../../constants/theme";
 import { errorMessage } from "../../lib/error-message";
 import { RATING_OPTIONS, RUNTIME_OPTIONS } from "../../lib/filter-options";
 import { formatRuntime } from "../../lib/labels";
+import { centered } from "../../lib/layout";
 import {
   useDiscover,
   useGenres,
@@ -61,9 +63,14 @@ export default function DiscoverScreen() {
     setGenres((current) => (current.includes(id) ? current.filter((g) => g !== id) : [...current, id]));
 
   const header = (
-    <View style={styles.filters}>
+    <View style={[styles.filters, centered()]}>
+      <PageTitle>{t("tabs.discoverHeader")}</PageTitle>
       <ChipRow>
-        <Chip label={t("mediaTypePlural.movie")} selected={mediaType === "movie"} onPress={() => switchMediaType("movie")} />
+        <Chip
+          label={t("mediaTypePlural.movie")}
+          selected={mediaType === "movie"}
+          onPress={() => switchMediaType("movie")}
+        />
         <Chip label={t("mediaTypePlural.tv")} selected={mediaType === "tv"} onPress={() => switchMediaType("tv")} />
         <ChipSeparator />
         {SORTS.map((s) => (
@@ -100,11 +107,12 @@ export default function DiscoverScreen() {
 
   return (
     <View style={styles.screen}>
+      {/* Outside the list so the filters stay visible while scrolling, like on the search tab. */}
+      {header}
       <FlatList
         data={items}
         keyExtractor={(item) => `${item.mediaType}-${item.tmdbId}`}
-        ListHeaderComponent={header}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, centered()]}
         renderItem={({ item }) => (
           <TitleRow title={item} householdProviderIds={providerIds} providersById={providersById} />
         )}
@@ -116,9 +124,17 @@ export default function DiscoverScreen() {
           discover.isPending ? (
             <ActivityIndicator color={colors.primary} style={styles.loader} />
           ) : discover.isError ? (
-            <EmptyState icon="cloud-offline-outline" title={t("common.loadingError")} message={errorMessage(t, discover.error)} />
+            <EmptyState
+              icon="cloud-offline-outline"
+              title={t("common.loadingError")}
+              message={errorMessage(t, discover.error)}
+            />
           ) : (
-            <EmptyState icon="funnel-outline" title={t("discover.noMatchTitle")} message={t("discover.noMatchMessage")} />
+            <EmptyState
+              icon="funnel-outline"
+              title={t("discover.noMatchTitle")}
+              message={t("discover.noMatchMessage")}
+            />
           )
         }
         ListFooterComponent={
@@ -131,7 +147,7 @@ export default function DiscoverScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  filters: { gap: spacing.sm, paddingVertical: spacing.sm, marginHorizontal: -spacing.lg },
+  filters: { gap: spacing.sm, paddingVertical: spacing.md },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   loader: { marginVertical: spacing.xl },
 });

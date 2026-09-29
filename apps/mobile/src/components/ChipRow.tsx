@@ -1,9 +1,14 @@
 import type { ReactNode } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { colors, spacing } from "../constants/theme";
+import { useIsWide } from "../lib/layout";
 
-/** Horizontally scrollable row of chips, bleeding to the screen edges. */
+/**
+ * Row of chips: horizontally scrollable on phones (edge to edge), wrapped on
+ * wide screens where horizontal scrolling with a mouse is awkward.
+ */
 export function ChipRow({ children }: { children: ReactNode }) {
+  if (useIsWide()) return <View style={[styles.row, styles.wrap]}>{children}</View>;
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
       {children}
@@ -16,6 +21,7 @@ export function ChipSeparator() {
 }
 
 const styles = StyleSheet.create({
-  row: { gap: spacing.sm, paddingHorizontal: spacing.lg, alignItems: "center" },
+  row: { flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.lg, alignItems: "center" },
+  wrap: { flexWrap: "wrap" },
   separator: { width: 1, height: 20, backgroundColor: colors.border },
 });

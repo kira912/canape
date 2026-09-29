@@ -3,8 +3,9 @@ import { Redirect, Tabs } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../../constants/theme";
+import { colors, spacing } from "../../constants/theme";
 import { useSession } from "../../lib/household-store";
+import { useIsWide } from "../../lib/layout";
 import { useHouseholdHydrated } from "../../lib/use-hydrated";
 
 export default function TabsLayout() {
@@ -12,6 +13,7 @@ export default function TabsLayout() {
   const hydrated = useHouseholdHydrated();
   const token = useSession((s) => s.token);
   const insets = useSafeAreaInsets();
+  const isWide = useIsWide();
 
   if (!hydrated) return null;
   if (!token) return <Redirect href="/welcome" />;
@@ -21,13 +23,31 @@ export default function TabsLayout() {
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: {
-          backgroundColor: colors.background,
-          borderTopColor: colors.border,
-          // On web the default 49px bar clips label descenders ("Foyer"); keep the home-indicator inset.
-          ...(Platform.OS === "web" ? { height: 56 + insets.bottom } : {}),
-        },
-        tabBarLabelStyle: { fontSize: 11, lineHeight: 14 },
+        ...(isWide
+          ? {
+              // Desktop / tablet: side navigation; each page shows its own <PageTitle>.
+              tabBarPosition: "left" as const,
+              tabBarLabelPosition: "beside-icon" as const,
+              headerShown: false,
+              tabBarStyle: {
+                width: 220,
+                paddingTop: spacing.xl,
+                backgroundColor: colors.background,
+                borderRightColor: colors.border,
+              },
+              tabBarItemStyle: { justifyContent: "flex-start", paddingHorizontal: spacing.lg, maxHeight: 52 },
+              tabBarLabelStyle: { fontSize: 15, marginLeft: spacing.md },
+              tabBarActiveBackgroundColor: colors.surface,
+            }
+          : {
+              tabBarStyle: {
+                backgroundColor: colors.background,
+                borderTopColor: colors.border,
+                // On web the default 49px bar clips label descenders ("Foyer"); keep the home-indicator inset.
+                ...(Platform.OS === "web" ? { height: 56 + insets.bottom } : {}),
+              },
+              tabBarLabelStyle: { fontSize: 11, lineHeight: 14 },
+            }),
         headerStyle: { backgroundColor: colors.background },
         headerTitleStyle: { color: colors.text },
         headerShadowVisible: false,

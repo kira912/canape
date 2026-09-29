@@ -2,14 +2,16 @@ import { MEMBER_COLORS } from "@canape/shared";
 import { Redirect } from "expo-router";
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "../components/Button";
 import { Chip } from "../components/Chip";
+import { TextField } from "../components/TextField";
 import { colors, radius, spacing } from "../constants/theme";
 import { ApiError } from "../lib/api-client";
 import { errorMessage } from "../lib/error-message";
 import { useSession } from "../lib/household-store";
+import { centered, FORM_MAX_WIDTH } from "../lib/layout";
 import { useCreateHousehold, useJoinHousehold } from "../lib/queries";
 
 type Mode = "create" | "join";
@@ -54,7 +56,10 @@ export default function WelcomeScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.flex}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={[styles.content, centered(FORM_MAX_WIDTH)]}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.logo}>Canapé</Text>
           <Text style={styles.tagline}>{t("welcome.tagline")}</Text>
 
@@ -65,27 +70,24 @@ export default function WelcomeScreen() {
 
           {mode === "join" ? (
             <Field label={t("welcome.inviteCode")}>
-              <TextInput
+              <TextField
                 value={inviteCode}
                 onChangeText={(v) => setInviteCode(v.toUpperCase())}
                 placeholder="ABC234"
-                placeholderTextColor={colors.textMuted}
                 autoCapitalize="characters"
                 autoCorrect={false}
                 maxLength={6}
-                style={[styles.input, styles.codeInput]}
+                style={styles.codeInput}
               />
             </Field>
           ) : null}
 
           <Field label={t("welcome.firstName")}>
-            <TextInput
+            <TextField
               value={memberName}
               onChangeText={setMemberName}
               placeholder={t("welcome.firstNamePlaceholder")}
-              placeholderTextColor={colors.textMuted}
               maxLength={30}
-              style={styles.input}
               onSubmitEditing={submit}
             />
           </Field>
@@ -106,13 +108,11 @@ export default function WelcomeScreen() {
 
           {mode === "create" ? (
             <Field label={t("welcome.householdName")}>
-              <TextInput
+              <TextField
                 value={householdName}
                 onChangeText={setHouseholdName}
                 placeholder={t("welcome.defaultHouseholdName")}
-                placeholderTextColor={colors.textMuted}
                 maxLength={40}
-                style={styles.input}
               />
             </Field>
           ) : (
@@ -121,7 +121,9 @@ export default function WelcomeScreen() {
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <Button
-            label={pending ? t("welcome.pending") : mode === "create" ? t("welcome.submitCreate") : t("welcome.submitJoin")}
+            label={
+              pending ? t("welcome.pending") : mode === "create" ? t("welcome.submitCreate") : t("welcome.submitJoin")
+            }
             onPress={submit}
           />
         </ScrollView>
@@ -148,16 +150,6 @@ const styles = StyleSheet.create({
   modes: { flexDirection: "row", gap: spacing.sm, justifyContent: "center" },
   field: { gap: spacing.sm },
   label: { color: colors.text, fontSize: 14, fontWeight: "600" },
-  input: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    color: colors.text,
-    fontSize: 16,
-  },
   codeInput: { fontSize: 22, fontWeight: "700", letterSpacing: 6, textAlign: "center" },
   colors: { flexDirection: "row", gap: spacing.md },
   swatch: { width: 36, height: 36, borderRadius: 18, borderWidth: 3, borderColor: "transparent" },

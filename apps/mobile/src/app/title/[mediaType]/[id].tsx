@@ -20,6 +20,7 @@ import { ProviderLogo } from "../../../components/ProviderLogo";
 import { colors, radius, spacing } from "../../../constants/theme";
 import { errorMessage } from "../../../lib/error-message";
 import { formatRuntime } from "../../../lib/labels";
+import { centered, useIsWide } from "../../../lib/layout";
 import {
   isInFavorites,
   useFavorites,
@@ -37,6 +38,7 @@ export default function TitleScreen() {
   const providerIds = useHouseholdProviderIds();
   const providersById = useProvidersById();
   const [showOthers, setShowOthers] = useState(false);
+  const isWide = useIsWide();
 
   if (title.isPending) {
     return (
@@ -75,61 +77,74 @@ export default function TitleScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      {t.backdropUrl ? <Image source={t.backdropUrl} style={styles.backdrop} contentFit="cover" /> : <View style={styles.backdropSpacer} />}
+      {t.backdropUrl ? (
+        <Image source={t.backdropUrl} style={isWide ? styles.backdropWide : styles.backdrop} contentFit="cover" />
+      ) : (
+        <View style={styles.backdropSpacer} />
+      )}
 
-      <View style={styles.header}>
-        {t.posterUrl ? <Image source={t.posterUrl} style={styles.poster} /> : null}
-        <View style={styles.headerText}>
-          <Text style={styles.title}>{t.title}</Text>
-          <Text style={styles.meta}>{meta}</Text>
-          {t.genres.length ? <Text style={styles.meta}>{t.genres.join(", ")}</Text> : null}
-          {coverage === "partial" ? <Badge color={colors.warning} label={translate("title.partial")} /> : null}
+      <View style={centered()}>
+        <View style={styles.header}>
+          {t.posterUrl ? <Image source={t.posterUrl} style={[styles.poster, isWide && styles.posterWide]} /> : null}
+          <View style={styles.headerText}>
+            <Text style={styles.title}>{t.title}</Text>
+            <Text style={styles.meta}>{meta}</Text>
+            {t.genres.length ? <Text style={styles.meta}>{t.genres.join(", ")}</Text> : null}
+            {coverage === "partial" ? <Badge color={colors.warning} label={translate("title.partial")} /> : null}
+          </View>
         </View>
-      </View>
 
-      <FavoriteButtons mediaType={t.mediaType} tmdbId={t.tmdbId} />
+        <FavoriteButtons mediaType={t.mediaType} tmdbId={t.tmdbId} />
 
-      <Section title={translate("title.watch")}>
-        {mine.length ? (
-          mine.map((option) => <WatchButton key={`${option.provider.id}-${option.type}`} option={option} primary />)
-        ) : (
-          <Text style={styles.muted}>{translate("title.notOnYourPlatforms")}</Text>
-        )}
-        {others.length ? (
-          <Pressable style={styles.toggle} onPress={() => setShowOthers((v) => !v)}>
-            <Text style={styles.toggleLabel}>
-              {showOthers ? translate("title.hideOtherOptions") : translate("title.otherOptions", { count: others.length })}
-            </Text>
-            <Ionicons name={showOthers ? "chevron-up" : "chevron-down"} size={16} color={colors.textMuted} />
+        <Section title={translate("title.watch")}>
+          {mine.length ? (
+            mine.map((option) => <WatchButton key={`${option.provider.id}-${option.type}`} option={option} primary />)
+          ) : (
+            <Text style={styles.muted}>{translate("title.notOnYourPlatforms")}</Text>
+          )}
+          {others.length ? (
+            <Pressable style={styles.toggle} onPress={() => setShowOthers((v) => !v)}>
+              <Text style={styles.toggleLabel}>
+                {showOthers
+                  ? translate("title.hideOtherOptions")
+                  : translate("title.otherOptions", { count: others.length })}
+              </Text>
+              <Ionicons name={showOthers ? "chevron-up" : "chevron-down"} size={16} color={colors.textMuted} />
+            </Pressable>
+          ) : null}
+          {showOthers
+            ? others.map((option) => <WatchButton key={`${option.provider.id}-${option.type}`} option={option} />)
+            : null}
+        </Section>
+
+        {t.overview ? (
+          <Section title={translate("title.overview")}>
+            <Text style={styles.overview}>{t.overview}</Text>
+          </Section>
+        ) : null}
+
+        {t.seasons?.length ? (
+          <Section title={translate("title.seasons")}>
+            {t.seasons.map((season) => (
+              <SeasonRow
+                key={season.seasonNumber}
+                season={season}
+                providerIds={providerIds}
+                providersById={providersById}
+              />
+            ))}
+          </Section>
+        ) : null}
+
+        {t.trailerUrl ? (
+          <Pressable style={styles.trailer} onPress={() => Linking.openURL(t.trailerUrl!)}>
+            <Ionicons name="play-circle" size={20} color={colors.text} />
+            <Text style={styles.trailerLabel}>{translate("title.trailer")}</Text>
           </Pressable>
         ) : null}
-        {showOthers
-          ? others.map((option) => <WatchButton key={`${option.provider.id}-${option.type}`} option={option} />)
-          : null}
-      </Section>
 
-      {t.overview ? (
-        <Section title={translate("title.overview")}>
-          <Text style={styles.overview}>{t.overview}</Text>
-        </Section>
-      ) : null}
-
-      {t.seasons?.length ? (
-        <Section title={translate("title.seasons")}>
-          {t.seasons.map((season) => (
-            <SeasonRow key={season.seasonNumber} season={season} providerIds={providerIds} providersById={providersById} />
-          ))}
-        </Section>
-      ) : null}
-
-      {t.trailerUrl ? (
-        <Pressable style={styles.trailer} onPress={() => Linking.openURL(t.trailerUrl!)}>
-          <Ionicons name="play-circle" size={20} color={colors.text} />
-          <Text style={styles.trailerLabel}>{translate("title.trailer")}</Text>
-        </Pressable>
-      ) : null}
-
-      <Text style={styles.attribution}>{translate("title.attribution")}</Text>
+        <Text style={styles.attribution}>{translate("title.attribution")}</Text>
+      </View>
     </ScrollView>
   );
 }
@@ -138,11 +153,12 @@ function FavoriteButtons({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: 
   const favorites = useFavorites();
   const toggle = useToggleFavorite();
   const { t } = useTranslation();
+  const isWide = useIsWide();
   const state = isInFavorites(favorites.data, { mediaType, tmdbId });
 
   const button = (list: FavoriteList, active: boolean, icon: "heart" | "bookmark", label: string) => (
     <Pressable
-      style={[styles.favoriteButton, active && styles.favoriteButtonActive]}
+      style={[styles.favoriteButton, isWide && styles.favoriteButtonWide, active && styles.favoriteButtonActive]}
       onPress={() => toggle.mutate({ ref: { list, mediaType, tmdbId }, add: !active })}
       disabled={favorites.isPending || toggle.isPending}
       accessibilityRole="button"
@@ -163,9 +179,10 @@ function FavoriteButtons({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: 
 
 function WatchButton({ option, primary = false }: { option: WatchOption; primary?: boolean }) {
   const { t } = useTranslation();
+  const isWide = useIsWide();
   return (
     <Pressable
-      style={[styles.watchButton, primary && styles.watchButtonPrimary]}
+      style={[styles.watchButton, isWide && styles.watchButtonWide, primary && styles.watchButtonPrimary]}
       onPress={() => Linking.openURL(option.link)}
       accessibilityRole="link"
     >
@@ -208,7 +225,9 @@ function SeasonRow({
           ))}
         </View>
       ) : (
-        <Text style={styles.seasonMissing}>{season.offers.length ? t("title.notYours") : t("title.seasonUnavailable")}</Text>
+        <Text style={styles.seasonMissing}>
+          {season.offers.length ? t("title.notYours") : t("title.seasonUnavailable")}
+        </Text>
       )}
     </View>
   );
@@ -236,13 +255,23 @@ const styles = StyleSheet.create({
   center: { alignItems: "center", justifyContent: "center" },
   content: { paddingBottom: spacing.xl * 2 },
   backdrop: { width: "100%", aspectRatio: 16 / 9, opacity: 0.55 },
+  /** 16:9 on a desktop window would be ~800px tall. */
+  backdropWide: { width: "100%", height: 380, opacity: 0.55 },
   backdropSpacer: { height: 100 },
   header: { flexDirection: "row", gap: spacing.lg, paddingHorizontal: spacing.lg, marginTop: -56 },
   poster: { width: 100, height: 150, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
+  posterWide: { width: 140, height: 210 },
   headerText: { flex: 1, justifyContent: "flex-end", gap: 4 },
   title: { color: colors.text, fontSize: 22, fontWeight: "800" },
   meta: { color: colors.textMuted, fontSize: 13 },
-  badge: { alignSelf: "flex-start", borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 2, marginTop: 4 },
+  badge: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    marginTop: 4,
+  },
   badgeLabel: { fontSize: 12, fontWeight: "600" },
   section: { paddingHorizontal: spacing.lg, marginTop: spacing.xl, gap: spacing.sm },
   favorites: { flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.lg, marginTop: spacing.lg },
@@ -257,6 +286,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  /** Sized to the label on wide screens instead of splitting the column in two. */
+  favoriteButtonWide: { flexGrow: 0, flexShrink: 0, flexBasis: "auto", paddingHorizontal: spacing.xl },
   favoriteButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   favoriteLabel: { color: colors.text, fontSize: 14, fontWeight: "600" },
   favoriteLabelActive: { color: colors.primaryText },
@@ -273,6 +304,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  watchButtonWide: { maxWidth: 560 },
   watchButtonPrimary: { borderColor: colors.primary },
   watchText: { flex: 1, gap: 2 },
   watchTitle: { color: colors.text, fontSize: 15, fontWeight: "600" },

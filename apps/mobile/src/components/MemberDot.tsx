@@ -6,7 +6,10 @@ import { colors } from "../constants/theme";
 export function MemberDot({ member, size = 18 }: { member: Member | undefined; size?: number }) {
   return (
     <View
-      style={[styles.dot, { width: size, height: size, borderRadius: size / 2, backgroundColor: member?.color ?? colors.border }]}
+      style={[
+        styles.dot,
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: member?.color ?? colors.border },
+      ]}
       accessibilityLabel={member?.name}
     >
       <Text style={[styles.initial, { fontSize: size * 0.5 }]}>{member?.name.charAt(0).toUpperCase() ?? "?"}</Text>
