@@ -84,3 +84,26 @@ export const favoritesSchema = z.object({
   mine: z.array(favoriteItemSchema),
 });
 export type Favorites = z.infer<typeof favoritesSchema>;
+
+// ---------------------------------------------------------------------------
+// "Déjà vu": per member, binary (a series is seen or not), never hides a title.
+// Kept out of catalog responses on purpose: those are cached publicly by the CDN.
+// ---------------------------------------------------------------------------
+
+export const watchedRefSchema = z.object({
+  mediaType: mediaTypeSchema,
+  tmdbId: z.coerce.number().int().positive(),
+  memberId: z.string().uuid(),
+});
+export type WatchedRef = z.infer<typeof watchedRefSchema>;
+
+export const watchedEntrySchema = z.object({
+  mediaType: mediaTypeSchema,
+  tmdbId: z.number().int(),
+  /** Members of the household who have seen it, oldest first. */
+  memberIds: z.array(z.string()),
+});
+export type WatchedEntry = z.infer<typeof watchedEntrySchema>;
+
+export const watchedSchema = z.object({ items: z.array(watchedEntrySchema) });
+export type Watched = z.infer<typeof watchedSchema>;

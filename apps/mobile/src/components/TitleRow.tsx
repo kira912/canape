@@ -6,7 +6,9 @@ import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, radius, spacing } from "../constants/theme";
 import { formatRuntime } from "../lib/labels";
+import { useWatchers } from "../lib/queries";
 import { ProviderLogo } from "./ProviderLogo";
+import { WatchedBadge } from "./WatchedBadge";
 
 interface Props {
   title: TitleSummary;
@@ -20,6 +22,9 @@ interface Props {
 
 export function TitleRow({ title, householdProviderIds, providersById, variant = "available", accessory }: Props) {
   const { t } = useTranslation();
+  const { watchers, members } = useWatchers(title.mediaType, title.tmdbId);
+  // Seen by the whole household: still listed (never hidden), just toned down.
+  const seenByAll = members.length > 0 && watchers.length === members.length;
   const offers = variant === "available" ? watchableOffers(title.offers, householdProviderIds) : title.offers;
   const runtime =
     title.mediaType === "movie"
@@ -33,7 +38,7 @@ export function TitleRow({ title, householdProviderIds, providersById, variant =
 
   return (
     <Pressable
-      style={[styles.row, variant === "elsewhere" && styles.dimmed]}
+      style={[styles.row, seenByAll && styles.seen, variant === "elsewhere" && styles.dimmed]}
       accessibilityRole="link"
       onPress={() =>
         router.push({ pathname: "/title/[mediaType]/[id]", params: { mediaType: title.mediaType, id: title.tmdbId } })
@@ -48,7 +53,10 @@ export function TitleRow({ title, householdProviderIds, providersById, variant =
         <Text style={styles.title} numberOfLines={2}>
           {title.title}
         </Text>
-        <Text style={styles.meta}>{meta}</Text>
+        <View style={styles.metaRow}>
+          <Text style={styles.meta}>{meta}</Text>
+          <WatchedBadge watchers={watchers} />
+        </View>
         <OfferStrip offers={offers} providersById={providersById} showTypes={variant === "elsewhere"} />
       </View>
       {accessory ? <View style={styles.accessory}>{accessory}</View> : null}
@@ -88,6 +96,8 @@ function OfferStrip({
 const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: spacing.md, paddingVertical: spacing.sm },
   dimmed: { opacity: 0.6 },
+  seen: { opacity: 0.75 },
+  metaRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.sm },
   poster: { width: 64, height: 96, borderRadius: radius.sm, backgroundColor: colors.surfaceRaised },
   posterPlaceholder: { borderWidth: 1, borderColor: colors.border },
   body: { flex: 1, gap: 4, justifyContent: "center" },

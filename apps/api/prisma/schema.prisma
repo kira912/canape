@@ -21,6 +21,7 @@ model Household {
   createdAt   DateTime   @default(now())
   members     Member[]
   favorites   Favorite[]
+  watched     Watched[]
 }
 
 model Member {
@@ -33,6 +34,7 @@ model Member {
   sessions    Session[]
   added       Favorite[] @relation("FavoriteAddedBy")
   personal    Favorite[] @relation("FavoriteOwner")
+  watched     Watched[]
 
   @@unique([householdId, name])
 }
@@ -65,4 +67,19 @@ model Favorite {
 
   @@unique([householdId, listKey, mediaType, tmdbId])
   @@index([householdId, listKey, createdAt])
+}
+
+/// "Déjà vu": one row per member and title. Binary on purpose (no per-episode tracking).
+model Watched {
+  id          String    @id @default(uuid())
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  memberId    String
+  member      Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  mediaType   String
+  tmdbId      Int
+  createdAt   DateTime  @default(now())
+
+  @@unique([memberId, mediaType, tmdbId])
+  @@index([householdId])
 }

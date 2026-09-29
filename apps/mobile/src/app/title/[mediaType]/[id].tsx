@@ -16,6 +16,7 @@ import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { EmptyState } from "../../../components/EmptyState";
+import { MemberDot } from "../../../components/MemberDot";
 import { ProviderLogo } from "../../../components/ProviderLogo";
 import { colors, radius, spacing } from "../../../constants/theme";
 import { errorMessage } from "../../../lib/error-message";
@@ -28,6 +29,8 @@ import {
   useProvidersById,
   useTitle,
   useToggleFavorite,
+  useToggleWatched,
+  useWatchers,
 } from "../../../lib/queries";
 
 export default function TitleScreen() {
@@ -95,6 +98,7 @@ export default function TitleScreen() {
         </View>
 
         <FavoriteButtons mediaType={t.mediaType} tmdbId={t.tmdbId} />
+        <WatchedToggles mediaType={t.mediaType} tmdbId={t.tmdbId} />
 
         <Section title={translate("title.watch")}>
           {mine.length ? (
@@ -162,7 +166,7 @@ function FavoriteButtons({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: 
       onPress={() => toggle.mutate({ ref: { list, mediaType, tmdbId }, add: !active })}
       disabled={favorites.isPending || toggle.isPending}
       accessibilityRole="button"
-      accessibilityState={{ selected: active }}
+      aria-pressed={active}
     >
       <Ionicons name={active ? icon : `${icon}-outline`} size={18} color={active ? colors.primaryText : colors.text} />
       <Text style={[styles.favoriteLabel, active && styles.favoriteLabelActive]}>{label}</Text>
@@ -173,6 +177,36 @@ function FavoriteButtons({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: 
     <View style={styles.favorites}>
       {button("household", state.household, "heart", t("title.addToHousehold"))}
       {button("me", state.mine, "bookmark", t("title.addToMine"))}
+    </View>
+  );
+}
+
+/** One toggle per household member: anyone can tick for the other ("elle l'a vu"). */
+function WatchedToggles({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: number }) {
+  const { t } = useTranslation();
+  const { watchers, members } = useWatchers(mediaType, tmdbId);
+  const toggle = useToggleWatched();
+  if (members.length === 0) return null;
+  return (
+    <View style={styles.watched}>
+      <Text style={styles.watchedLabel}>{t("watched.title")}</Text>
+      {members.map((member) => {
+        const seen = watchers.some((w) => w.id === member.id);
+        return (
+          <Pressable
+            key={member.id}
+            style={[styles.watchedChip, seen && styles.watchedChipOn]}
+            onPress={() => toggle.mutate({ ref: { mediaType, tmdbId, memberId: member.id }, seen: !seen })}
+            accessibilityRole="checkbox"
+            aria-checked={seen}
+            accessibilityLabel={t("watched.toggle", { name: member.name })}
+          >
+            <MemberDot member={member} size={18} />
+            <Text style={styles.watchedName}>{member.name}</Text>
+            {seen ? <Ionicons name="checkmark" size={16} color={colors.success} /> : null}
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -289,6 +323,27 @@ const styles = StyleSheet.create({
   /** Sized to the label on wide screens instead of splitting the column in two. */
   favoriteButtonWide: { flexGrow: 0, flexShrink: 0, flexBasis: "auto", paddingHorizontal: spacing.xl },
   favoriteButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  watched: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.md,
+  },
+  watchedLabel: { color: colors.textMuted, fontSize: 14, marginRight: spacing.xs },
+  watchedChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  watchedChipOn: { borderColor: colors.success, backgroundColor: colors.surface },
+  watchedName: { color: colors.text, fontSize: 14 },
   favoriteLabel: { color: colors.text, fontSize: 14, fontWeight: "600" },
   favoriteLabelActive: { color: colors.primaryText },
   sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "700" },

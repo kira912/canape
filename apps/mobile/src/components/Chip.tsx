@@ -12,7 +12,7 @@ export function Chip({ label, selected = false, onPress }: Props) {
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityState={{ selected }}
+      aria-selected={selected}
       style={[styles.chip, selected && styles.selected]}
     >
       <Text style={[styles.label, selected && styles.selectedLabel]}>{label}</Text>

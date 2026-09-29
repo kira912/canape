@@ -83,7 +83,7 @@ export default function SettingsScreen() {
               style={[styles.row, selected && styles.rowSelected]}
               onPress={() => toggle(item.id)}
               accessibilityRole="checkbox"
-              accessibilityState={{ checked: selected }}
+              aria-checked={selected}
             >
               <ProviderLogo provider={item} size={36} />
               <Text style={styles.name}>{item.name}</Text>

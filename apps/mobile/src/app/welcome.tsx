@@ -99,7 +99,7 @@ export default function WelcomeScreen() {
                   key={c}
                   onPress={() => setColor(c)}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected: color === c }}
+                  aria-checked={color === c}
                   style={[styles.swatch, { backgroundColor: c }, color === c && styles.swatchSelected]}
                 />
               ))}

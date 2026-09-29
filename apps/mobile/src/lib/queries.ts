@@ -3,6 +3,7 @@ import {
   householdSchema,
   meSchema,
   sessionSchema,
+  watchedSchema,
   discoverResponseSchema,
   genreSchema,
   providerSchema,
@@ -15,15 +16,12 @@ import {
   type JoinHouseholdInput,
   type MediaType,
   type Me,
+  type Member,
+  type Watched,
+  type WatchedRef,
   type Provider,
 } from "@canape/shared";
-import {
-  keepPreviousData,
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
@@ -177,7 +175,8 @@ export function useUpdateProviders() {
     onMutate: async (providerIds) => {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<Me>(key);
-      if (previous) queryClient.setQueryData<Me>(key, { ...previous, household: { ...previous.household, providerIds } });
+      if (previous)
+        queryClient.setQueryData<Me>(key, { ...previous, household: { ...previous.household, providerIds } });
       return { previous };
     },
     onError: (_error, _ids, context) => {
@@ -216,4 +215,60 @@ export function useToggleFavorite() {
       apiRequest(add ? "PUT" : "DELETE", `/favorites/${ref.list}/${ref.mediaType}/${ref.tmdbId}`, null),
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["favorites", token] }),
   });
+}
+
+// ---------------------------------------------------------------------------
+// "Déjà vu" (household-private: fetched separately from CDN-cached catalog data)
+// ---------------------------------------------------------------------------
+
+export function useWatched() {
+  const token = useSession((s) => s.token);
+  return useQuery({
+    queryKey: ["watched", token],
+    queryFn: () => apiGet("/watched", watchedSchema),
+    enabled: Boolean(token),
+    staleTime: 60 * 1000,
+  });
+}
+
+/** Members who have seen a title, in household order. */
+export function useWatchers(mediaType: MediaType, tmdbId: number): { watchers: Member[]; members: Member[] } {
+  const { data: watched } = useWatched();
+  const { data: me } = useMe();
+  return useMemo(() => {
+    const members = me?.household.members ?? [];
+    const entry = watched?.items.find((i) => i.mediaType === mediaType && i.tmdbId === tmdbId);
+    return { members, watchers: members.filter((m) => entry?.memberIds.includes(m.id)) };
+  }, [watched, me, mediaType, tmdbId]);
+}
+
+/** Optimistic: the member chip flips at once, rolled back if the API refuses. */
+export function useToggleWatched() {
+  const queryClient = useQueryClient();
+  const token = useSession((s) => s.token);
+  const key = ["watched", token];
+  return useMutation({
+    mutationFn: ({ ref, seen }: { ref: WatchedRef; seen: boolean }) =>
+      apiRequest(seen ? "PUT" : "DELETE", `/watched/${ref.mediaType}/${ref.tmdbId}/${ref.memberId}`, null),
+    onMutate: async ({ ref, seen }) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<Watched>(key);
+      queryClient.setQueryData<Watched>(key, toggleLocally(previous ?? { items: [] }, ref, seen));
+      return { previous };
+    },
+    onError: (_error, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(key, context.previous);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
+  });
+}
+
+export function toggleLocally(watched: Watched, ref: WatchedRef, seen: boolean): Watched {
+  const same = (i: Watched["items"][number]) => i.mediaType === ref.mediaType && i.tmdbId === ref.tmdbId;
+  const current = watched.items.find(same)?.memberIds ?? [];
+  const memberIds = seen ? [...new Set([...current, ref.memberId])] : current.filter((id) => id !== ref.memberId);
+  const others = watched.items.filter((i) => !same(i));
+  return {
+    items: memberIds.length ? [...others, { mediaType: ref.mediaType, tmdbId: ref.tmdbId, memberIds }] : others,
+  };
 }

@@ -96,6 +96,11 @@ export const en: Translations = {
     addToHousehold: "Shared list",
     addToMine: "My list",
   },
+  watched: {
+    title: "Seen by:",
+    toggle: "{{name}} has seen it",
+    seenBy: "Seen by {{names}}",
+  },
   favorites: {
     householdTab: "Shared list ({{count}})",
     mineTab: "My list ({{count}})",

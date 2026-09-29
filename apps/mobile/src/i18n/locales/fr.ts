@@ -95,6 +95,11 @@ export const fr = {
     addToHousehold: "Liste commune",
     addToMine: "Ma liste",
   },
+  watched: {
+    title: "Déjà vu :",
+    toggle: "{{name}} l'a vu",
+    seenBy: "Vu par {{names}}",
+  },
   favorites: {
     householdTab: "Liste commune ({{count}})",
     mineTab: "Ma liste ({{count}})",
