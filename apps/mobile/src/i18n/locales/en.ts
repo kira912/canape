@@ -170,6 +170,10 @@ export const en: Translations = {
     start: "Start the evening",
     cancel: "Cancel",
     newEvening: "New evening",
+    end: "End",
+    endWarning:
+      "End the evening for the whole household? The suggestions stop and tonight's matches won't be shown anymore.",
+    endConfirm: "End the evening",
     like: "Like",
     nope: "Not tonight",
     likeStamp: "YES",

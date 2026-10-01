@@ -168,6 +168,10 @@ export const fr = {
     start: "Lancer la soirée",
     cancel: "Annuler",
     newEvening: "Nouvelle soirée",
+    end: "Terminer",
+    endWarning:
+      "Terminer la soirée pour tout le foyer ? Les propositions s'arrêtent et les matchs de ce soir ne seront plus affichés.",
+    endConfirm: "Terminer la soirée",
     like: "J'aime",
     nope: "Pas ce soir",
     likeStamp: "OUI",

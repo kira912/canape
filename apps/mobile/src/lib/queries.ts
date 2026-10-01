@@ -388,6 +388,17 @@ export function useStartMatch() {
   });
 }
 
+export function useEndMatch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiRequest("DELETE", "/match/sessions/current", null),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["match"] });
+      void queryClient.removeQueries({ queryKey: ["match-deck"] });
+    },
+  });
+}
+
 /** Cards are consumed locally; the screen refetches when it runs low. */
 export function useMatchDeck(sessionId: string | undefined) {
   const lang = useLanguageKey();

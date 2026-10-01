@@ -152,3 +152,16 @@ describe("MatchService.start", () => {
     expect(started.id).toBe("s2");
   });
 });
+
+describe("MatchService.end", () => {
+  it("closes the household's open evening", async () => {
+    const { service, prisma } = setup();
+
+    await service.end(me);
+
+    expect(prisma.matchSession.updateMany).toHaveBeenCalledWith({
+      where: { householdId: "h1", closedAt: null },
+      data: { closedAt: expect.any(Date) },
+    });
+  });
+});

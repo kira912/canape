@@ -31,6 +31,7 @@ import { centered } from "../../lib/layout";
 import {
   MATCH_VOTE_KEY,
   useAiMatchCriteria,
+  useEndMatch,
   useGenres,
   useHouseholdProviderIds,
   useMatchDeck,
@@ -286,6 +287,7 @@ function Evening({
   const vote = useMatchVote();
   const votesInFlight = useIsMutating({ mutationKey: MATCH_VOTE_KEY });
   const [voted, setVoted] = useState<Set<string>>(() => new Set());
+  const [confirmingEnd, setConfirmingEnd] = useState(false);
   const cardRef = useRef<SwipeCardHandle>(null);
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
@@ -337,11 +339,16 @@ function Evening({
         <Text style={styles.summary} numberOfLines={2}>
           {summary}
         </Text>
-        <Pressable onPress={onNewEvening} style={styles.newEvening} accessibilityRole="button">
+        <Pressable onPress={onNewEvening} style={styles.headerAction} accessibilityRole="button">
           <Ionicons name="options-outline" size={16} color={colors.primary} />
-          <Text style={styles.newEveningLabel}>{t("match.newEvening")}</Text>
+          <Text style={styles.headerActionLabel}>{t("match.newEvening")}</Text>
+        </Pressable>
+        <Pressable onPress={() => setConfirmingEnd(true)} style={styles.headerAction} accessibilityRole="button">
+          <Ionicons name="stop-circle-outline" size={16} color={colors.primary} />
+          <Text style={styles.headerActionLabel}>{t("match.end")}</Text>
         </Pressable>
       </View>
+      {confirmingEnd ? <EndEvening onCancel={() => setConfirmingEnd(false)} /> : null}
 
       <View style={[styles.deck, { height: cardHeight }]}>
         {deck.isPending || (!top && deck.isFetching) ? (
@@ -418,6 +425,22 @@ function Evening({
   );
 }
 
+/** Ends the evening for everyone: asks first. The screen then goes back to the setup. */
+function EndEvening({ onCancel }: { onCancel: () => void }) {
+  const { t } = useTranslation();
+  const end = useEndMatch();
+  return (
+    <View style={styles.endCard}>
+      <Text style={styles.endText}>{t("match.endWarning")}</Text>
+      {end.isError ? <Text style={styles.endError}>{errorMessage(t, end.error)}</Text> : null}
+      <View style={styles.endActions}>
+        <Button label={t("match.cancel")} variant="ghost" onPress={onCancel} />
+        <Button label={end.isPending ? "…" : t("match.endConfirm")} onPress={() => !end.isPending && end.mutate()} />
+      </View>
+    </View>
+  );
+}
+
 function RoundButton({
   icon,
   color,
@@ -466,8 +489,20 @@ const styles = StyleSheet.create({
   evening: { gap: spacing.md, paddingTop: spacing.sm },
   eveningHeader: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingHorizontal: spacing.lg },
   summary: { flex: 1, color: colors.textMuted, fontSize: 14 },
-  newEvening: { flexDirection: "row", alignItems: "center", gap: 4 },
-  newEveningLabel: { color: colors.primary, fontSize: 14, fontWeight: "600" },
+  headerAction: { flexDirection: "row", alignItems: "center", gap: 4 },
+  headerActionLabel: { color: colors.primary, fontSize: 14, fontWeight: "600" },
+  endCard: {
+    gap: spacing.md,
+    marginHorizontal: spacing.lg,
+    padding: spacing.lg,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  endText: { color: colors.text, fontSize: 14, lineHeight: 20 },
+  endError: { color: "#EB5757", fontSize: 14 },
+  endActions: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.sm },
   deck: { alignItems: "center", justifyContent: "center" },
   nextCard: {
     position: "absolute",

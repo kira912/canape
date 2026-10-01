@@ -52,6 +52,14 @@ export class MatchService {
     return toSession(session);
   }
 
+  /** Closes the current evening, if any (its votes and matches stay in the database). */
+  async end(member: AuthenticatedMember): Promise<void> {
+    await this.prisma.matchSession.updateMany({
+      where: { householdId: member.householdId, closedAt: null },
+      data: { closedAt: new Date() },
+    });
+  }
+
   /**
    * Next cards for this member. Excludes titles they already voted on and titles
    * seen by anyone in the household. Titles the others liked come first (without

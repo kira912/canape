@@ -4,7 +4,8 @@ import { mediaTypeSchema, titleSummarySchema } from "./catalog";
 /**
  * "Match": one member starts an evening with criteria, every member swipes the
  * same deck (same order → more overlap), a title liked by the whole household
- * is a match. Starting a new evening closes the previous one.
+ * is a match. Starting a new evening closes the previous one; any member can
+ * also end the current one.
  */
 export const matchFiltersSchema = z.object({
   mediaType: mediaTypeSchema,

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Post, UseGuards } from "@nestjs/common";
 import {
   matchFiltersSchema,
   matchVoteSchema,
@@ -29,6 +29,13 @@ export class MatchController {
     @Body(new ZodValidationPipe(matchFiltersSchema)) filters: MatchFilters,
   ) {
     return this.match.start(member, filters);
+  }
+
+  /** Ends the evening for the whole household; idempotent (another member may have ended it first). */
+  @Delete("sessions/current")
+  @HttpCode(204)
+  async end(@CurrentMember() member: AuthenticatedMember): Promise<void> {
+    await this.match.end(member);
   }
 
   @Get("deck")
