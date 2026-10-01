@@ -82,6 +82,9 @@ export const en: Translations = {
   },
   titleRow: {
     notStreamable: "Not available for streaming in France",
+    showOverview: "Show the overview of {{title}}",
+    hideOverview: "Hide the overview of {{title}}",
+    openTitle: "See details",
   },
   title: {
     unavailable: "Title unavailable",

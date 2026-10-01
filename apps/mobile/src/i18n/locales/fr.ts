@@ -81,6 +81,9 @@ export const fr = {
   },
   titleRow: {
     notStreamable: "Pas disponible en streaming en France",
+    showOverview: "Afficher le résumé de {{title}}",
+    hideOverview: "Masquer le résumé de {{title}}",
+    openTitle: "Voir la fiche",
   },
   title: {
     unavailable: "Fiche indisponible",
