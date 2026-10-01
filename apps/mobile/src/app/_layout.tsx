@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { Analytics } from "../components/Analytics";
 import { Seo } from "../components/Seo";
 import { colors } from "../constants/theme";
 import { resolvePreference } from "../i18n";
@@ -31,6 +32,7 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider value={navigationTheme}>
           <LanguageSync />
+          <Analytics />
           <StatusBar style="light" />
           <Stack screenOptions={{ headerTintColor: colors.text, contentStyle: { backgroundColor: colors.background } }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

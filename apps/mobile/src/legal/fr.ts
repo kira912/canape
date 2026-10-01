@@ -55,7 +55,7 @@ export const fr: LegalTexts = {
         blocks: [
           [
             "Pas de compte, pas d'e-mail, pas de mot de passe : un prénom (ou un pseudo) suffit.",
-            "Pas de publicité, pas de mesure d'audience, pas de cookie de suivi.",
+            "Pas de publicité, pas de cookie de suivi ; sur le site web uniquement, une mesure d'audience anonyme et sans cookie.",
             "Vos données servent uniquement à faire fonctionner l'application et ne sont ni vendues ni partagées à des fins commerciales.",
             "Vous pouvez tout supprimer à tout moment depuis l'application (Profil ou Foyer → Supprimer mes données).",
           ],
@@ -84,6 +84,7 @@ export const fr: LegalTexts = {
           "Conservées uniquement sur votre appareil (stockage local du navigateur ou de l'application) : le jeton de session, la langue choisie et, si vous l'avez associée, l'adresse de votre téléviseur sur le réseau Wi-Fi. Ce stockage est strictement nécessaire au fonctionnement du service et ne requiert donc pas de consentement.",
           "Caméra : utilisée uniquement, et seulement si vous l'autorisez, pour lire un QR code de connexion. L'image est analysée sur votre appareil ; elle n'est ni enregistrée ni envoyée.",
           "Données techniques : comme tout site web, l'hébergeur traite l'adresse IP et les informations de connexion (journaux techniques) pour acheminer les requêtes et assurer la sécurité du service.",
+          "Mesure d'audience (site web uniquement, pas l'application mobile) : Vercel Web Analytics compte les pages vues de façon agrégée — page visitée, page de provenance, pays, type de navigateur, de système et d'appareil. Elle ne dépose aucun cookie et n'enregistre pas votre adresse IP ; un visiteur n'est reconnu que par une empreinte anonyme renouvelée chaque jour, qui ne permet pas de vous suivre d'un jour à l'autre ni sur d'autres sites.",
         ],
       },
       {
@@ -92,6 +93,7 @@ export const fr: LegalTexts = {
           [
             "Fournir le service (foyer, favoris, recherche, Match) : exécution des conditions d'utilisation que vous acceptez en utilisant l'application (art. 6.1.b du RGPD).",
             "Sécurité, prévention des abus et limitation du nombre de requêtes : intérêt légitime de l'éditeur (art. 6.1.f du RGPD).",
+            "Mesure d'audience anonyme du site web, pour savoir quelles pages sont utilisées et améliorer le service : intérêt légitime de l'éditeur (art. 6.1.f du RGPD). Exemptée de consentement, car elle ne dépose aucun cookie et ne produit que des statistiques anonymes.",
           ],
         ],
       },
@@ -100,7 +102,7 @@ export const fr: LegalTexts = {
         blocks: [
           "Seuls l'éditeur et les prestataires techniques suivants ont accès aux données, chacun pour sa mission :",
           [
-            `${HOST.name} (États-Unis) : hébergement de l'application et de l'API ;`,
+            `${HOST.name} (États-Unis) : hébergement de l'application et de l'API, et mesure d'audience du site web ;`,
             "Neon Inc. : base de données, hébergée à Francfort (Allemagne) ;",
             "Groq Inc. ou Anthropic PBC (États-Unis), selon la configuration : interprétation des phrases saisies dans les fonctions d'IA ;",
             "TMDB et YouTube : les affiches, logos et miniatures de bandes-annonces sont chargés directement depuis leurs serveurs d'images, qui reçoivent donc votre adresse IP.",
@@ -118,6 +120,7 @@ export const fr: LegalTexts = {
             "Demandes de connexion par QR code : valables 5 minutes, supprimées au plus tard 24 heures après leur expiration.",
             "Phrases envoyées à l'IA : non conservées en base ; l'interprétation peut rester jusqu'à 24 heures en mémoire cache sur le serveur, sans lien avec votre identité.",
             "Journaux techniques de l'hébergeur : durée limitée fixée par l'hébergeur.",
+            "Mesure d'audience : statistiques agrégées uniquement ; l'empreinte anonyme d'un visiteur est renouvelée chaque jour.",
           ],
         ],
       },

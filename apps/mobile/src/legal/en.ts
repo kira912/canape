@@ -55,7 +55,7 @@ export const en: LegalTexts = {
         blocks: [
           [
             "No account, no email, no password: a first name (or a nickname) is enough.",
-            "No ads, no analytics, no tracking cookies.",
+            "No ads, no tracking cookies; on the website only, anonymous cookieless audience measurement.",
             "Your data is only used to run the app and is never sold or shared for commercial purposes.",
             "You can delete everything at any time from the app (Profile or Household → Delete my data).",
           ],
@@ -84,6 +84,7 @@ export const en: LegalTexts = {
           "Kept only on your device (browser or app local storage): the session token, your language and, if you paired one, your TV's address on the Wi-Fi network. This storage is strictly necessary for the service and therefore requires no consent.",
           "Camera: used only, and only if you allow it, to read a sign-in QR code. The image is analysed on your device; it is neither saved nor sent.",
           "Technical data: like any website, the host processes IP addresses and connection information (technical logs) to route requests and keep the service secure.",
+          "Audience measurement (website only, not the mobile app): Vercel Web Analytics counts page views in aggregate — page visited, referring page, country, browser, operating system and device type. It sets no cookie and does not store your IP address; a visitor is only recognised by an anonymous fingerprint reset every day, which cannot follow you from one day to the next or across other sites.",
         ],
       },
       {
@@ -92,6 +93,7 @@ export const en: LegalTexts = {
           [
             "Providing the service (household, favourites, search, Match): performance of the terms of use you accept by using the app (GDPR art. 6.1.b).",
             "Security, abuse prevention and rate limiting: the publisher's legitimate interest (GDPR art. 6.1.f).",
+            "Anonymous audience measurement of the website, to see which pages are used and improve the service: the publisher's legitimate interest (GDPR art. 6.1.f). Exempt from consent, as it sets no cookie and only produces anonymous statistics.",
           ],
         ],
       },
@@ -100,7 +102,7 @@ export const en: LegalTexts = {
         blocks: [
           "Only the publisher and the following technical providers access the data, each for its own task:",
           [
-            `${HOST.name} (USA): hosting of the app and API;`,
+            `${HOST.name} (USA): hosting of the app and API, and website audience measurement;`,
             "Neon Inc.: database, hosted in Frankfurt (Germany);",
             "Groq Inc. or Anthropic PBC (USA), depending on configuration: interpreting sentences typed in AI features;",
             "TMDB and YouTube: posters, logos and trailer thumbnails load directly from their image servers, which therefore receive your IP address.",
@@ -118,6 +120,7 @@ export const en: LegalTexts = {
             "QR sign-in requests: valid 5 minutes, deleted at most 24 hours after they expire.",
             "Sentences sent to the AI: not stored in the database; the interpretation may stay up to 24 hours in the server's memory cache, unlinked to your identity.",
             "Host technical logs: a limited period set by the host.",
+            "Audience measurement: aggregated statistics only; a visitor's anonymous fingerprint is reset every day.",
           ],
         ],
       },
