@@ -37,6 +37,7 @@ model Member {
   personal    Favorite[]  @relation("FavoriteOwner")
   watched     Watched[]
   matchVotes  MatchVote[]
+  pairings    DevicePairing[]
 
   @@unique([householdId, name])
 }
@@ -115,4 +116,24 @@ model MatchVote {
 
   @@unique([sessionId, memberId, mediaType, tmdbId])
   @@index([sessionId, mediaType, tmdbId])
+}
+
+/// Signing in a new device by QR code: the new device polls with its secret
+/// until a signed-in member approves (see PairingService). Short-lived.
+model DevicePairing {
+  id         String    @id @default(uuid())
+  /// The new device's polling secret, stored hashed like session tokens.
+  secretHash String    @unique
+  /// "Chrome · macOS": shown on the approving device.
+  device     String
+  /// Set on approval: the member the new device signs in as.
+  memberId   String?
+  member     Member?   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  approvedAt DateTime?
+  /// Set once the new device received its session: a pairing works only once.
+  claimedAt  DateTime?
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+
+  @@index([expiresAt])
 }

@@ -9,6 +9,9 @@ import {
   matchSessionSchema,
   matchStateSchema,
   matchVoteResultSchema,
+  pairingInfoSchema,
+  pairingSchema,
+  pairingStatusSchema,
   watchedSchema,
   discoverResponseSchema,
   genreSchema,
@@ -26,6 +29,7 @@ import {
   type MatchFiltersInput,
   type MatchVote,
   type Member,
+  type Pairing,
   type Watched,
   type WatchedRef,
   type Provider,
@@ -184,12 +188,65 @@ export function useJoinHousehold() {
   });
 }
 
+// --- QR sign-in (see packages/shared/src/pairing.ts) ---------------------------
+
+/** New device: starts a pairing whose id goes in the QR. */
+export function useCreatePairing() {
+  return useMutation({ mutationFn: () => apiRequest("POST", "/pairings", pairingSchema) });
+}
+
+/** New device: polls until a signed-in device approves, then keeps the session it receives. */
+export function usePairingClaim(pairing: Pairing | undefined) {
+  const setSession = useSession((s) => s.setSession);
+  return useQuery({
+    queryKey: ["pairing-claim", pairing?.id],
+    enabled: !!pairing,
+    queryFn: async () => {
+      const status = await apiRequest("POST", `/pairings/${pairing!.id}/claim`, pairingStatusSchema, {
+        secret: pairing!.secret,
+      });
+      if (status.status === "approved") setSession(status.session);
+      return status;
+    },
+    refetchInterval: (query) => (query.state.data?.status === "approved" || query.state.error ? false : 2000),
+    retry: false,
+    gcTime: 0,
+  });
+}
+
+/** Signed-in device: what it is about to connect. */
+export function usePairingInfo(id: string) {
+  return useQuery({
+    queryKey: ["pairing-info", id],
+    queryFn: () => apiRequest("GET", `/pairings/${id}`, pairingInfoSchema),
+    retry: false,
+    gcTime: 0,
+  });
+}
+
+export function useApprovePairing(id: string) {
+  return useMutation({ mutationFn: () => apiRequest("POST", `/pairings/${id}/approve`, null) });
+}
+
 export function useLeaveHousehold() {
   const clearSession = useSession((s) => s.clearSession);
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => apiRequest("DELETE", "/household/session", null).catch(() => undefined),
     onSettled: () => {
+      clearSession();
+      queryClient.clear();
+    },
+  });
+}
+
+/** Right to erasure: deletes this member and their data server-side, then forgets the session. */
+export function useDeleteMyData() {
+  const clearSession = useSession((s) => s.clearSession);
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiRequest("DELETE", "/household/member", null),
+    onSuccess: () => {
       clearSession();
       queryClient.clear();
     },
@@ -375,7 +432,6 @@ export function useAiSearch(query: string, providerIds: number[]) {
 
 export function useAiMatchCriteria() {
   return useMutation({
-    mutationFn: (moods: string[]) =>
-      apiRequest("POST", "/ai/match-criteria", aiMatchCriteriaResponseSchema, { moods }),
+    mutationFn: (moods: string[]) => apiRequest("POST", "/ai/match-criteria", aiMatchCriteriaResponseSchema, { moods }),
   });
 }

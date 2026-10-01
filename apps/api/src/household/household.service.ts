@@ -88,11 +88,26 @@ export class HouseholdService {
     return this.getHousehold(householdId);
   }
 
+  /**
+   * Right to erasure: deletes the member with their sessions, lists, "already
+   * watched" and votes (cascades), including the shared-list titles they added.
+   * The household goes with its last member.
+   */
+  async deleteMember(memberId: string, householdId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.member.delete({ where: { id: memberId } });
+      if ((await tx.member.count({ where: { householdId } })) === 0) {
+        await tx.household.delete({ where: { id: householdId } });
+      }
+    });
+  }
+
   async closeSession(token: string): Promise<void> {
     await this.prisma.session.deleteMany({ where: { tokenHash: hashToken(token) } });
   }
 
-  private async openSession(memberId: string, householdId: string): Promise<Session> {
+  /** A new device session for the member (sign-up, join, QR pairing). */
+  async openSession(memberId: string, householdId: string): Promise<Session> {
     const token = generateSessionToken();
     await this.prisma.session.create({ data: { memberId, tokenHash: hashToken(token) } });
     return { token, ...(await this.me(memberId, householdId)) };

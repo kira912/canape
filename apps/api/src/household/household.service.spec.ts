@@ -46,3 +46,30 @@ describe("HouseholdService.updateMember", () => {
     expect(prisma.member.findFirst).not.toHaveBeenCalled();
   });
 });
+
+describe("HouseholdService.deleteMember", () => {
+  function setupDelete(remaining: number) {
+    const tx = {
+      member: {
+        delete: jest.fn(async (_args: unknown) => undefined),
+        count: jest.fn(async (_args: unknown) => remaining),
+      },
+      household: { delete: jest.fn(async (_args: unknown) => undefined) },
+    };
+    const prisma = { $transaction: jest.fn(async (fn: (client: typeof tx) => Promise<void>) => fn(tx)) };
+    return { service: new HouseholdService(prisma as unknown as PrismaService), tx };
+  }
+
+  it("deletes the member and keeps a household that still has members", async () => {
+    const { service, tx } = setupDelete(1);
+    await service.deleteMember("m1", "h1");
+    expect(tx.member.delete).toHaveBeenCalledWith({ where: { id: "m1" } });
+    expect(tx.household.delete).not.toHaveBeenCalled();
+  });
+
+  it("deletes the household with its last member", async () => {
+    const { service, tx } = setupDelete(0);
+    await service.deleteMember("m1", "h1");
+    expect(tx.household.delete).toHaveBeenCalledWith({ where: { id: "h1" } });
+  });
+});

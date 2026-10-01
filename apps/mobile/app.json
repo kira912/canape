@@ -28,7 +28,15 @@
       "favicon": "./public/icons/icon-192.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Canapé utilise la caméra pour scanner le QR code qui connecte un autre appareil à votre profil.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -46,6 +46,14 @@ export class HouseholdController {
     return this.households.updateMember(member.memberId, member.householdId, body);
   }
 
+  /** Deletes the member and all their data (every device is signed out). */
+  @Delete("household/member")
+  @UseGuards(MemberGuard)
+  @HttpCode(204)
+  async deleteMember(@CurrentMember() member: AuthenticatedMember) {
+    await this.households.deleteMember(member.memberId, member.householdId);
+  }
+
   /** Signs this device out (the member and their data stay). */
   @Delete("household/session")
   @UseGuards(MemberGuard)

@@ -115,7 +115,8 @@ export const en: Translations = {
   },
   tv: {
     title: "My TV",
-    intro: "Launch Netflix, Prime Video, Disney+… straight on your Samsung TV from a title page. Phone and TV must be on the same Wi-Fi.",
+    intro:
+      "Launch Netflix, Prime Video, Disney+… straight on your Samsung TV from a title page. Phone and TV must be on the same Wi-Fi.",
     webOnly: "Available in the mobile app: a browser can't control the TV.",
     search: "Find my TV",
     searching: "Searching the network… ({{done}}/254)",
@@ -153,7 +154,8 @@ export const en: Translations = {
   },
   match: {
     needPartnerTitle: "Match takes two",
-    needPartnerMessage: "Invite the other household member with the code {{code}} (Household tab), then start an evening.",
+    needPartnerMessage:
+      "Invite the other household member with the code {{code}} (Household tab), then start an evening.",
     setupTitle: "New match evening",
     setupIntro:
       "Pick the criteria: everyone gets the same suggestions, available on your platforms and not seen by anyone yet. When you all like the same title, it's a match.",
@@ -196,6 +198,18 @@ export const en: Translations = {
     inviteCode: "Invite code",
     share: "Share",
     shareMessage: "Join our household on Canapé with the code {{code}}",
+    otherDeviceTitle: "Use Canapé on another device",
+    otherDeviceIntro:
+      "On the new device, open Canapé and choose “Sign in with another device”, then scan the QR code it shows.",
+    otherDeviceScan: "Scan a QR code",
+    otherDeviceManual: "No camera? Choose “Join a household” on the new device and enter:",
+    otherDeviceName: "First name",
+    otherDeviceKeep:
+      "Write these two down: they are the only way to get your profile back if you change device or clear your browser.",
+    otherDeviceCopy: "Copy",
+    otherDeviceCopied: "Copied",
+    otherDeviceSend: "Send to me",
+    otherDeviceMessage: "Canapé — Join a household with the code {{code}} and the first name “{{name}}”",
     platforms: "Our platforms",
     platformsIntro:
       "Tick the platforms you have an account on. Search first shows only what you can watch at no extra cost. Shared with the whole household.",
@@ -204,6 +218,12 @@ export const en: Translations = {
     language: "Language",
     languageSystem: "Phone language",
     signOut: "Sign out on this device",
+    deleteData: "Delete my data",
+    deleteWarning:
+      "Your profile, lists, “already watched” titles, votes and the titles you added to the shared list will be permanently deleted, on all your devices.",
+    deleteWarningLast: "You are the last member: the whole household will be deleted.",
+    deleteConfirm: "Delete permanently",
+    cancel: "Cancel",
     attribution:
       "Movie and series data: TMDB. Platform availability: JustWatch.\nThis product uses the TMDB API but is not endorsed or certified by TMDB.",
   },
@@ -226,5 +246,60 @@ export const en: Translations = {
     pending: "One moment…",
     submitCreate: "Create household",
     submitJoin: "Join",
+    seoTitle: "Find what to watch on your platforms",
+    seoDescription:
+      "Search for a movie or series across all your streaming platforms at once, open it in one tap and pick together with Match mode. Free, no account.",
+    featuresTitle: "How it works",
+    features: {
+      platformsTitle: "Only your platforms",
+      platformsText:
+        "Netflix, Prime Video, Disney+… Tick your subscriptions: search first shows what you can watch at no extra cost.",
+      openTitle: "Open in one tap",
+      openText: "One button opens the title right in the platform's app, on your phone or your TV.",
+      matchTitle: "Pick together",
+      matchText: "Match mode: everyone swipes on their own, Canapé shows you the titles everybody likes.",
+      aiTitle: "Ask in plain words",
+      aiText: "“A Korean thriller under two hours”: AI turns what you feel like into search criteria.",
+    },
+    legalConsent: "By continuing, you accept the terms of use and the privacy policy.",
+  },
+  pairing: {
+    welcomeButton: "Sign in with another device",
+    qrTitle: "Scan this QR code",
+    qrSteps: "On a device already signed in to Canapé: Profile (or Household) → “Scan a QR code”.",
+    qrWaiting: "Waiting for approval…",
+    qrRenew: "The QR code renews itself every 5 minutes.",
+    qrError: "Couldn't show the QR code.",
+    retry: "Try again",
+    scanTitle: "Scan a QR code",
+    scanHint: "Point at the QR code shown on the new device.",
+    scanInvalid: "This isn't a Canapé sign-in QR code.",
+    cameraPermission: "Canapé needs the camera to read the QR code. The image is neither saved nor sent.",
+    cameraAllow: "Allow camera",
+    cameraDenied: "Camera access is denied. Allow it in your device or browser settings.",
+    cameraUnavailable: "Camera unavailable on this device.",
+    close: "Close",
+    approveTitle: "Sign in this device?",
+    approveAs: "It will be signed in to your profile “{{name}}” with access to your household.",
+    approveWarning:
+      "Only approve if you just displayed this QR code yourself. If someone asked you to scan it, cancel.",
+    approve: "Sign in",
+    approved: "Device signed in",
+    approvedHint: "You can carry on on the new device.",
+    expired: "This QR code has expired. Show a new one on the other device.",
+    unknown: "Unknown QR code.",
+    already: "This device is already signed in.",
+    signedOut:
+      "To sign in a new device, scan this QR code from Canapé on a device that is already signed in: Profile → “Scan a QR code”.",
+    back: "Back to Canapé",
+  },
+  legal: {
+    updated: "Last updated: {{date}}",
+    frenchPrevails: "Translation provided for convenience; the French version prevails.",
+    links: {
+      "legal-notice": "Legal notice",
+      privacy: "Privacy",
+      terms: "Terms of use",
+    },
   },
 };

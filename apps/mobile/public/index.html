@@ -4,8 +4,46 @@
     <meta charset="utf-8" />
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>%WEB_TITLE%</title>
-    <meta name="description" content="Cherchez un film ou une série sur toutes vos plateformes à la fois." />
+    <title>Canapé — Trouvez quoi regarder sur toutes vos plateformes</title>
+    <!-- data-rh: replaced by the page's own tags once the app runs (expo-router/head), instead of duplicated. -->
+    <meta
+      data-rh="true"
+      name="description"
+      content="Cherchez un film ou une série sur toutes vos plateformes de streaming à la fois, ouvrez-le en un geste et choisissez à deux avec le mode Match. Gratuit, sans compte."
+    />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="color-scheme" content="dark" />
+    <!-- Social previews. Canonical / og:url are set per page by <Seo> (expo-router/head). -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Canapé" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta data-rh="true" property="og:title" content="Canapé — Trouvez quoi regarder sur toutes vos plateformes" />
+    <meta
+      data-rh="true"
+      property="og:description"
+      content="Cherchez sur toutes vos plateformes de streaming à la fois, ouvrez le titre en un geste et choisissez à deux avec le mode Match."
+    />
+    <meta property="og:image" content="%SITE_URL%/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Canapé : tout ce que vous pouvez regarder, sur toutes vos plateformes." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="%SITE_URL%/og-image.png" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Canapé",
+        "url": "%SITE_URL%/",
+        "description": "Cherchez un film ou une série sur toutes vos plateformes de streaming à la fois, ouvrez-le en un geste et choisissez à deux avec le mode Match.",
+        "applicationCategory": "EntertainmentApplication",
+        "operatingSystem": "Web, iOS, Android",
+        "inLanguage": ["fr", "en"],
+        "image": "%SITE_URL%/og-image.png",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+      }
+    </script>
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#14111A" />
@@ -38,7 +76,29 @@
       * {
         scrollbar-color: #342c40 transparent;
       }
+      /* Static content for crawlers without JavaScript; the app replaces #root's content as soon as it starts. */
+      .js #static-landing {
+        display: none;
+      }
+      #static-landing {
+        margin: auto;
+        max-width: 560px;
+        padding: 32px 16px;
+        color: #f4efe9;
+        font: 15px/1.5 system-ui, sans-serif;
+      }
+      #static-landing h1 {
+        color: #b57edc;
+        font-size: 40px;
+        margin: 0;
+      }
+      #static-landing a {
+        color: #9a92a6;
+      }
     </style>
+    <script>
+      document.documentElement.classList.add("js");
+    </script>
     <script>
       // Service workers only run in a secure context (https or localhost).
       if ("serviceWorker" in navigator && window.isSecureContext) {
@@ -51,6 +111,29 @@
 
   <body>
     <noscript>Canapé a besoin de JavaScript.</noscript>
-    <div id="root"></div>
+    <div id="root">
+      <main id="static-landing">
+        <h1>Canapé</h1>
+        <p>Trouvez quoi regarder sur toutes vos plateformes de streaming à la fois, seul ou à deux.</p>
+        <h2>Comment ça marche</h2>
+        <h3>Seulement vos plateformes</h3>
+        <p>
+          Netflix, Prime Video, Disney+, Canal+… Cochez vos abonnements : la recherche montre d'abord ce que vous
+          pouvez regarder sans payer en plus.
+        </p>
+        <h3>Ouvrir en un geste</h3>
+        <p>Un bouton ouvre directement le titre dans l'app de la plateforme, sur votre téléphone ou votre TV.</p>
+        <h3>Choisir à deux</h3>
+        <p>Mode Match : chacun swipe de son côté, Canapé vous montre les titres qui plaisent à tout le monde.</p>
+        <h3>Demandez en langage naturel</h3>
+        <p>« Un thriller coréen de moins de deux heures » : l'IA traduit votre envie en critères de recherche.</p>
+        <p><a href="/welcome">Commencer — gratuit, sans compte</a></p>
+        <footer>
+          <a href="/legal/legal-notice">Mentions légales</a> ·
+          <a href="/legal/privacy">Confidentialité</a> ·
+          <a href="/legal/terms">Conditions d'utilisation</a>
+        </footer>
+      </main>
+    </div>
   </body>
 </html>

@@ -114,7 +114,8 @@ export const fr = {
   },
   tv: {
     title: "Ma TV",
-    intro: "Lancez Netflix, Prime Video, Disney+… directement sur votre TV Samsung, depuis la fiche d'un titre. Le téléphone et la TV doivent être sur le même Wi-Fi.",
+    intro:
+      "Lancez Netflix, Prime Video, Disney+… directement sur votre TV Samsung, depuis la fiche d'un titre. Le téléphone et la TV doivent être sur le même Wi-Fi.",
     webOnly: "Disponible dans l'app mobile : un navigateur ne peut pas piloter la TV.",
     search: "Rechercher ma TV",
     searching: "Recherche sur le réseau… ({{done}}/254)",
@@ -180,7 +181,8 @@ export const fr = {
     available: "Dispo chez vous",
     elsewhere: "Pas sur vos plateformes",
     emptyHouseholdTitle: "Rien à regarder ensemble pour l'instant",
-    emptyHouseholdMessage: "Ajoutez un titre depuis sa fiche avec « Liste commune » : il apparaîtra aussi chez l'autre.",
+    emptyHouseholdMessage:
+      "Ajoutez un titre depuis sa fiche avec « Liste commune » : il apparaîtra aussi chez l'autre.",
     emptyMineTitle: "Votre liste est vide",
     emptyMineMessage: "Ajoutez un titre depuis sa fiche avec « Ma liste ».",
   },
@@ -195,6 +197,18 @@ export const fr = {
     inviteCode: "Code d'invitation",
     share: "Partager",
     shareMessage: "Rejoins notre foyer sur Canapé avec le code {{code}}",
+    otherDeviceTitle: "Utiliser Canapé sur un autre appareil",
+    otherDeviceIntro:
+      "Sur le nouvel appareil, ouvrez Canapé et choisissez « Se connecter avec un autre appareil », puis scannez le QR code qui s'affiche.",
+    otherDeviceScan: "Scanner un QR code",
+    otherDeviceManual: "Sans caméra ? Choisissez « Rejoindre un foyer » sur le nouvel appareil et saisissez :",
+    otherDeviceName: "Prénom",
+    otherDeviceKeep:
+      "Notez ces deux informations : c'est le seul moyen de retrouver votre profil si vous changez d'appareil ou videz votre navigateur.",
+    otherDeviceCopy: "Copier",
+    otherDeviceCopied: "Copié",
+    otherDeviceSend: "M'envoyer",
+    otherDeviceMessage: "Canapé — Rejoindre un foyer avec le code {{code}} et le prénom « {{name}} »",
     platforms: "Nos plateformes",
     platformsIntro:
       "Cochez les plateformes où vous avez un compte. La recherche n'affichera d'abord que ce que vous pouvez regarder sans payer en plus. Partagé avec tout le foyer.",
@@ -203,6 +217,12 @@ export const fr = {
     language: "Langue",
     languageSystem: "Langue du téléphone",
     signOut: "Se déconnecter de cet appareil",
+    deleteData: "Supprimer mes données",
+    deleteWarning:
+      "Votre profil, vos listes, vos « déjà vu », vos votes et les titres que vous avez ajoutés à la liste commune seront définitivement supprimés, sur tous vos appareils.",
+    deleteWarningLast: "Vous êtes le dernier membre : le foyer entier sera supprimé.",
+    deleteConfirm: "Supprimer définitivement",
+    cancel: "Annuler",
     attribution:
       "Données films et séries : TMDB. Disponibilités par plateforme : JustWatch.\nCe produit utilise l'API TMDB mais n'est ni approuvé ni certifié par TMDB.",
   },
@@ -225,6 +245,62 @@ export const fr = {
     pending: "Un instant…",
     submitCreate: "Créer le foyer",
     submitJoin: "Rejoindre",
+    seoTitle: "Trouvez quoi regarder sur vos plateformes",
+    seoDescription:
+      "Cherchez un film ou une série sur toutes vos plateformes de streaming à la fois, ouvrez-le en un geste et choisissez à deux avec le mode Match. Gratuit, sans compte.",
+    featuresTitle: "Comment ça marche",
+    features: {
+      platformsTitle: "Seulement vos plateformes",
+      platformsText:
+        "Netflix, Prime Video, Disney+, Canal+… Cochez vos abonnements : la recherche montre d'abord ce que vous pouvez regarder sans payer en plus.",
+      openTitle: "Ouvrir en un geste",
+      openText: "Un bouton ouvre directement le titre dans l'app de la plateforme, sur votre téléphone ou votre TV.",
+      matchTitle: "Choisir à deux",
+      matchText: "Mode Match : chacun swipe de son côté, Canapé vous montre les titres qui plaisent à tout le monde.",
+      aiTitle: "Demandez en langage naturel",
+      aiText: "« Un thriller coréen de moins de deux heures » : l'IA traduit votre envie en critères de recherche.",
+    },
+    legalConsent: "En continuant, vous acceptez les conditions d'utilisation et la politique de confidentialité.",
+  },
+  pairing: {
+    welcomeButton: "Se connecter avec un autre appareil",
+    qrTitle: "Scannez ce QR code",
+    qrSteps: "Sur un appareil déjà connecté à Canapé : Profil (ou Foyer) → « Scanner un QR code ».",
+    qrWaiting: "En attente de validation…",
+    qrRenew: "Le QR code se renouvelle automatiquement toutes les 5 minutes.",
+    qrError: "Impossible d'afficher le QR code.",
+    retry: "Réessayer",
+    scanTitle: "Scanner un QR code",
+    scanHint: "Visez le QR code affiché sur le nouvel appareil.",
+    scanInvalid: "Ce n'est pas un QR code de connexion Canapé.",
+    cameraPermission: "Canapé a besoin de la caméra pour lire le QR code. L'image n'est ni enregistrée ni envoyée.",
+    cameraAllow: "Autoriser la caméra",
+    cameraDenied:
+      "L'accès à la caméra est refusé. Autorisez-le dans les réglages de votre appareil ou de votre navigateur.",
+    cameraUnavailable: "Caméra indisponible sur cet appareil.",
+    close: "Fermer",
+    approveTitle: "Connecter cet appareil ?",
+    approveAs: "Il sera connecté à votre profil « {{name}} » et aura accès à votre foyer.",
+    approveWarning:
+      "Ne validez que si vous venez d'afficher ce QR code vous-même. Si quelqu'un vous a demandé de le scanner, annulez.",
+    approve: "Connecter",
+    approved: "Appareil connecté",
+    approvedHint: "Vous pouvez continuer sur le nouvel appareil.",
+    expired: "Ce QR code a expiré. Affichez-en un nouveau sur l'autre appareil.",
+    unknown: "QR code inconnu.",
+    already: "Cet appareil est déjà connecté.",
+    signedOut:
+      "Pour connecter un nouvel appareil, scannez ce QR code depuis Canapé sur un appareil déjà connecté : Profil → « Scanner un QR code ».",
+    back: "Retour à Canapé",
+  },
+  legal: {
+    updated: "Dernière mise à jour : {{date}}",
+    frenchPrevails: "La version française fait foi.",
+    links: {
+      "legal-notice": "Mentions légales",
+      privacy: "Confidentialité",
+      terms: "Conditions d'utilisation",
+    },
   },
 };
 

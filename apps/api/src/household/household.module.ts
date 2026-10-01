@@ -6,5 +6,6 @@ import { MemberGuard } from "./member.guard";
 @Module({
   controllers: [HouseholdController],
   providers: [HouseholdService, MemberGuard],
+  exports: [HouseholdService],
 })
 export class HouseholdModule {}

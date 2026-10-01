@@ -5,7 +5,9 @@ import { CatalogModule } from "./catalog/catalog.module";
 import { FavoritesModule } from "./favorites/favorites.module";
 import { HouseholdModule } from "./household/household.module";
 import { MatchModule } from "./match/match.module";
+import { PairingModule } from "./pairing/pairing.module";
 import { PrismaModule } from "./prisma/prisma.module";
+import { RetentionModule } from "./retention/retention.module";
 import { WatchedModule } from "./watched/watched.module";
 
 @Module({
@@ -18,6 +20,8 @@ import { WatchedModule } from "./watched/watched.module";
     WatchedModule,
     MatchModule,
     AiModule,
+    RetentionModule,
+    PairingModule,
   ],
 })
 export class AppModule {}

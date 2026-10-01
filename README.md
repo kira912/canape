@@ -63,6 +63,9 @@ Un seul projet Vercel, à la racine du monorepo : la PWA est servie par le CDN, 
    | `STREAMING_AVAILABILITY_API_KEY` | optionnelle |
    | `LLM_API_KEY` | optionnelle — clé Groq **gratuite**, active la recherche IA et le Match assisté |
    | `ANTHROPIC_API_KEY` | optionnelle, payante — utilise Claude à la place (prioritaire si renseignée) |
+   | `CRON_SECRET` | chaîne aléatoire (`openssl rand -hex 32`) — protège la purge quotidienne des données inactives |
+   | `EXPO_PUBLIC_CONTACT_EMAIL` | e-mail de contact affiché dans les pages légales (obligatoire) |
+   | `SITE_URL` | optionnelle — domaine public (`https://…`) ; sinon le domaine de production Vercel |
 
 3. **Importer le repo** (GitHub) ou `vercel deploy` depuis la racine. Réglages du projet : Root Directory = racine,
    Framework = Other ; le reste vient de `vercel.json`.
@@ -70,6 +73,39 @@ Un seul projet Vercel, à la racine du monorepo : la PWA est servie par le CDN, 
 Le build (`pnpm vercel-build`) compile `shared`, génère Prisma, **applique les migrations** (`prisma migrate deploy`),
 compile l'API puis exporte la PWA. pnpm 11 est forcé via `npx pnpm@11.25.0` (les réglages de `pnpm-workspace.yaml`
 ne sont pas compris par les versions plus anciennes).
+
+### Mise en production
+
+- **Avant d'ouvrir au public** : renseigner l'éditeur et le contact dans `apps/mobile/src/constants/site.ts`
+  (ou `EXPO_PUBLIC_CONTACT_EMAIL`) — le build affiche un avertissement tant que le placeholder est là — et relire
+  les textes de `apps/mobile/src/legal/` (changer `legalUpdatedAt` à chaque modification).
+- **Domaine** : l'ajouter dans Vercel → Domains. Les URLs canoniques, le sitemap et l'image de partage utilisent
+  `SITE_URL`, sinon `VERCEL_PROJECT_PRODUCTION_URL`.
+- **Google Search Console** : déclarer le domaine puis soumettre `https://<domaine>/sitemap.xml`.
+- Les déploiements Preview ont un `robots.txt` qui interdit tout (et Vercel ajoute `X-Robots-Tag: noindex`).
+
+### Légal (RGPD / LCEN)
+
+- Pages publiques `/legal/legal-notice`, `/legal/privacy`, `/legal/terms` (FR qui fait foi + EN), liées depuis
+  l'accueil, le profil et chaque page légale.
+- Pas de cookie ni de traceur : uniquement du stockage local strictement nécessaire → pas de bandeau de consentement.
+  Ajouter un outil d'audience ou de pub imposerait un bandeau **et** une mise à jour de la politique.
+- **Droit à l'effacement** : Profil/Foyer → « Supprimer mes données » (`DELETE /api/household/member`) supprime le
+  membre et tout ce qu'il a créé ; le foyer part avec son dernier membre.
+- **Durée de conservation** : un appareil inutilisé 12 mois est déconnecté, un foyer sans plus aucun appareil est
+  supprimé — Vercel Cron appelle `GET /api/cron/purge` chaque nuit (`crons` dans `vercel.json`, `CRON_SECRET`).
+  `Session.lastUsedAt` est rafraîchi au plus une fois par jour.
+- Sous-traitants cités dans la politique : Vercel, Neon, Groq ou Anthropic, TMDB/YouTube (images). En changer
+  ⇒ mettre la politique à jour.
+
+### SEO
+
+- `/welcome` sert de landing page (fonctionnalités + CTA) ; `index.html` contient aussi une version statique de ce
+  contenu pour les robots sans JavaScript, masquée dès que l'app démarre.
+- Titre, description, canonical et Open Graph par page via `<Seo>` (`expo-router/head`) ; valeurs par défaut,
+  image de partage (`public/og-image.png`, 1200×630) et JSON-LD `WebApplication` dans `public/index.html`.
+- `robots.txt` et `sitemap.xml` sont générés par `apps/mobile/scripts/build-web.mjs` (pages publiques uniquement ;
+  les écrans du foyer sont `noindex`).
 
 ### Cache
 
@@ -108,6 +144,18 @@ ne sont pas compris par les versions plus anciennes).
 - Les **plateformes** sont celles du foyer (partagées).
 - **Favoris** : une *liste commune* (avec la pastille de qui a ajouté le titre) et *ma liste* pour chacun.
   Les titres regardables chez vous sont affichés en premier.
+
+### Connexion par QR code (comme Discord)
+
+- **Nouvel appareil** (déconnecté) : Accueil → « Se connecter avec un autre appareil » affiche un QR code
+  (`<origine>/pair/<id>`) et interroge l'API toutes les 2 s.
+- **Appareil connecté** : Profil/Foyer → « Scanner un QR code » (`/scan`, expo-camera), puis validation sur
+  `/pair/[id]` (aussi atteignable en scannant avec l'appareil photo du système si le navigateur est connecté).
+- Sécurité : le QR ne contient que l'id ; il faut une session pour valider, et le **secret** resté sur le nouvel
+  appareil pour recevoir la session. Valable 5 min, utilisable une seule fois (`DevicePairing`, purgé par le cron).
+- Web : le décodage passe par `BarcodeDetector` natif, sinon par zxing en WebAssembly, servi depuis notre domaine
+  (`/zxing_reader.wasm`, copié au build) plutôt que depuis le CDN jsDelivr. La caméra exige HTTPS (ou localhost).
+- Natif : nécessite un nouveau build (module natif `expo-camera`, permission caméra dans `app.json`).
 
 ## Langues
 

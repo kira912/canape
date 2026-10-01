@@ -1,11 +1,15 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { MEMBER_COLORS } from "@canape/shared";
 import { Redirect } from "expo-router";
-import { useState, type ReactNode } from "react";
+import { useState, type ComponentProps, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "../components/Button";
 import { Chip } from "../components/Chip";
+import { LegalLinks } from "../components/LegalLinks";
+import { PairingQr } from "../components/PairingQr";
+import { Seo } from "../components/Seo";
 import { TextField } from "../components/TextField";
 import { colors, radius, spacing } from "../constants/theme";
 import { ApiError } from "../lib/api-client";
@@ -14,8 +18,18 @@ import { useSession } from "../lib/household-store";
 import { centered, FORM_MAX_WIDTH } from "../lib/layout";
 import { useCreateHousehold, useJoinHousehold } from "../lib/queries";
 
-/** "start": solo in one tap (a household of one, invite later); "create"/"join": shared household forms. */
-type Mode = "start" | "create" | "join";
+const FEATURES = [
+  { icon: "tv-outline", key: "platforms" },
+  { icon: "open-outline", key: "open" },
+  { icon: "flame-outline", key: "match" },
+  { icon: "sparkles-outline", key: "ai" },
+] as const satisfies readonly { icon: ComponentProps<typeof Ionicons>["name"]; key: string }[];
+
+/**
+ * "start": solo in one tap (a household of one, invite later); "create"/"join": shared household forms;
+ * "pair": sign in by QR code from an already signed-in device.
+ */
+type Mode = "start" | "create" | "join" | "pair";
 
 export default function WelcomeScreen() {
   const { t } = useTranslation();
@@ -69,7 +83,10 @@ export default function WelcomeScreen() {
           contentContainerStyle={[styles.content, centered(FORM_MAX_WIDTH)]}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.logo}>Canapé</Text>
+          <Seo title={t("welcome.seoTitle")} description={t("welcome.seoDescription")} />
+          <Text style={styles.logo} accessibilityRole="header" aria-level={1}>
+            Canapé
+          </Text>
           <Text style={styles.tagline}>{t("welcome.tagline")}</Text>
 
           {mode === "start" ? (
@@ -80,12 +97,17 @@ export default function WelcomeScreen() {
               <View style={styles.divider} />
               <Button label={t("welcome.together")} variant="ghost" onPress={() => setMode("create")} />
               <Button label={t("welcome.join")} variant="ghost" onPress={() => setMode("join")} />
+              <Button label={t("pairing.welcomeButton")} variant="ghost" onPress={() => setMode("pair")} />
+              <Features />
+            </>
+          ) : mode === "pair" ? (
+            <>
+              <BackLink onPress={() => setMode("start")} />
+              <PairingQr />
             </>
           ) : (
             <>
-              <Pressable onPress={() => setMode("start")} style={styles.back} accessibilityRole="button" hitSlop={8}>
-                <Text style={styles.backLabel}>← {t("welcome.back")}</Text>
-              </Pressable>
+              <BackLink onPress={() => setMode("start")} />
               <View style={styles.modes}>
                 <Chip label={t("welcome.create")} selected={mode === "create"} onPress={() => setMode("create")} />
                 <Chip label={t("welcome.join")} selected={mode === "join"} onPress={() => setMode("join")} />
@@ -155,9 +177,47 @@ export default function WelcomeScreen() {
               />
             </>
           )}
+          <View style={styles.legal}>
+            <Text style={styles.consent}>{t("welcome.legalConsent")}</Text>
+            <LegalLinks />
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function BackLink({ onPress }: { onPress: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <Pressable onPress={onPress} style={styles.back} accessibilityRole="button" hitSlop={8}>
+      <Text style={styles.backLabel}>← {t("welcome.back")}</Text>
+    </Pressable>
+  );
+}
+
+/** What the app does, for first-time visitors (this screen is also the landing page on the web). */
+function Features() {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.features}>
+      <Text style={styles.featuresTitle} accessibilityRole="header" aria-level={2}>
+        {t("welcome.featuresTitle")}
+      </Text>
+      {FEATURES.map(({ icon, key }) => (
+        <View key={key} style={styles.feature}>
+          <View style={styles.featureIcon}>
+            <Ionicons name={icon} size={20} color={colors.primary} />
+          </View>
+          <View style={styles.featureText}>
+            <Text style={styles.featureTitle} accessibilityRole="header" aria-level={3}>
+              {t(`welcome.features.${key}Title`)}
+            </Text>
+            <Text style={styles.featureBody}>{t(`welcome.features.${key}Text`)}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
   );
 }
 
@@ -188,4 +248,20 @@ const styles = StyleSheet.create({
   back: { alignSelf: "flex-start" },
   backLabel: { color: colors.primary, fontSize: 14, fontWeight: "600" },
   error: { color: "#EB5757", fontSize: 14, textAlign: "center" },
+  features: { gap: spacing.lg, marginTop: spacing.xl },
+  featuresTitle: { color: colors.text, fontSize: 18, fontWeight: "700", textAlign: "center" },
+  feature: { flexDirection: "row", gap: spacing.md, alignItems: "flex-start" },
+  featureIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  featureText: { flex: 1, gap: 2 },
+  featureTitle: { color: colors.text, fontSize: 15, fontWeight: "600" },
+  featureBody: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
+  legal: { gap: spacing.sm, marginTop: spacing.xl },
+  consent: { color: colors.textMuted, fontSize: 12, lineHeight: 17, textAlign: "center" },
 });

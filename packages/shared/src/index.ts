@@ -5,3 +5,4 @@ export * from "./household";
 export * from "./i18n";
 export * from "./match";
 export * from "./ai";
+export * from "./pairing";
