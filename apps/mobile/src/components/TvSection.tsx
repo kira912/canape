@@ -1,10 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { getIpAddressAsync } from "expo-network";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, radius, spacing } from "../constants/theme";
 import { useSession } from "../lib/household-store";
+import { networksToScan, requestLanAccess } from "../lib/tv/lan-access";
 import { probeSamsungTv, scanForTvs, tvControlAvailable, type SavedTv } from "../lib/tv/samsung";
 import { Button } from "./Button";
 import { TextField } from "./TextField";
@@ -24,7 +24,7 @@ export function TvSection() {
     return (
       <View style={styles.section}>
         <Text style={styles.title}>{t("tv.title")}</Text>
-        <Text style={styles.muted}>{t("tv.webOnly")}</Text>
+        <Text style={styles.muted}>{t("tv.browserUnsupported")}</Text>
       </View>
     );
   }
@@ -35,8 +35,15 @@ export function TvSection() {
     setFound(null);
     setProgress(0);
     try {
-      const phoneIp = await getIpAddressAsync();
-      const tvs = await scanForTvs(phoneIp, setProgress);
+      if (!(await requestLanAccess())) {
+        setMessage(t("tv.lanDenied"));
+        return;
+      }
+      let tvs: SavedTv[] = [];
+      for (const address of await networksToScan()) {
+        tvs = await scanForTvs(address, setProgress);
+        if (tvs.length > 0) break;
+      }
       setFound(tvs);
       if (tvs.length === 0) setMessage(t("tv.none"));
       // A single TV on the network: pick it straight away.
@@ -52,6 +59,10 @@ export function TvSection() {
     const ip = manualIp.trim();
     if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return;
     setMessage(null);
+    if (!(await requestLanAccess())) {
+      setMessage(t("tv.lanDenied"));
+      return;
+    }
     const probed = await probeSamsungTv(ip, 4000);
     if (probed) {
       setTv(probed);
@@ -65,6 +76,7 @@ export function TvSection() {
     <View style={styles.section}>
       <Text style={styles.title}>{t("tv.title")}</Text>
       <Text style={styles.muted}>{t("tv.intro")}</Text>
+      {Platform.OS === "web" && !tv ? <Text style={styles.muted}>{t("tv.lanPrompt")}</Text> : null}
 
       {tv ? (
         <View style={styles.card}>

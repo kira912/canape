@@ -119,7 +119,12 @@ export const fr = {
     title: "Ma TV",
     intro:
       "Lancez Netflix, Prime Video, Disney+… directement sur votre TV Samsung, depuis la fiche d'un titre. Le téléphone et la TV doivent être sur le même Wi-Fi.",
-    webOnly: "Disponible dans l'app mobile : un navigateur ne peut pas piloter la TV.",
+    browserUnsupported:
+      "Ce navigateur ne peut pas piloter la TV : ouvrez Canapé dans Chrome ou Edge (ordinateur ou Android), ou utilisez l'app mobile.",
+    lanPrompt:
+      "Le navigateur va vous demander l'accès aux appareils de votre réseau local : acceptez pour qu'il trouve et pilote votre TV.",
+    lanDenied:
+      "Accès au réseau local refusé. Autorisez-le dans les paramètres du site (icône à gauche de l'adresse), puis réessayez.",
     search: "Rechercher ma TV",
     searching: "Recherche sur le réseau… ({{done}}/254)",
     none: "Aucune TV Samsung trouvée. Vérifiez qu'elle est allumée et sur le même Wi-Fi.",

@@ -1,12 +1,13 @@
 import type { WatchOption } from "@canape/shared";
-import { Platform } from "react-native";
+import { dialAllowed, lanAccessSupported } from "./lan-access";
 
 /**
  * Samsung Tizen TVs on the local network, without pairing:
  * - DIAL (`:8080/ws/app/<App>`) opens Netflix / YouTube on a precise title;
  * - the TV's REST API (`:8001/api/v2/applications/<id>`) opens any installed app.
- * Plain HTTP to a LAN address: works from the native app (Expo Go included),
- * never from the browser/PWA, which blocks requests to the local network.
+ * Plain HTTP to a LAN address: works from the native app (Expo Go included), and
+ * from Chrome/Edge once the user allows local network access (see lan-access.web.ts),
+ * where DIAL is refused: a browser only opens the app.
  * Tested on a 2025 QLED (TQ55Q7FAAUXXC).
  */
 
@@ -16,7 +17,7 @@ export interface SavedTv {
   model: string | null;
 }
 
-export const tvControlAvailable = Platform.OS !== "web";
+export const tvControlAvailable = lanAccessSupported;
 
 /** Tizen app ids per platform (several: ids change between app generations). */
 const SAMSUNG_APP_IDS: Record<string, string[]> = {
@@ -59,7 +60,7 @@ export function youtubeDialBody(link: string): string {
 }
 
 function dialBody(option: Pick<WatchOption, "platform" | "link" | "linkKind">): string {
-  if (option.linkKind !== "direct") return "";
+  if (!dialAllowed || option.linkKind !== "direct") return "";
   if (option.platform === "netflix") return netflixDialBody(option.link);
   if (option.platform === "youtube") return youtubeDialBody(option.link);
   return "";
@@ -129,7 +130,7 @@ export async function openOnTv(tv: SavedTv, option: WatchOption): Promise<TvLaun
   if (!platform || !canOpenOnTv(platform)) throw new TvError("unsupported");
 
   let reached = false;
-  const dialApp = DIAL_APPS[platform];
+  const dialApp = dialAllowed ? DIAL_APPS[platform] : undefined;
   if (dialApp) {
     const body = dialBody(option);
     try {

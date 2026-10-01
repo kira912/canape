@@ -120,7 +120,12 @@ export const en: Translations = {
     title: "My TV",
     intro:
       "Launch Netflix, Prime Video, Disney+… straight on your Samsung TV from a title page. Phone and TV must be on the same Wi-Fi.",
-    webOnly: "Available in the mobile app: a browser can't control the TV.",
+    browserUnsupported:
+      "This browser can't control the TV: open Canapé in Chrome or Edge (computer or Android), or use the mobile app.",
+    lanPrompt:
+      "Your browser will ask to access devices on your local network: accept so it can find and control your TV.",
+    lanDenied:
+      "Local network access denied. Allow it in the site settings (icon left of the address), then try again.",
     search: "Find my TV",
     searching: "Searching the network… ({{done}}/254)",
     none: "No Samsung TV found. Check it's on and on the same Wi-Fi.",
