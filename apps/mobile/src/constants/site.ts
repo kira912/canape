@@ -19,4 +19,9 @@ export const HOST = {
   name: "Vercel Inc.",
   address: "440 N Barranca Ave #4133, Covina, CA 91723",
   website: "https://vercel.com",
+  /**
+   * Required by the LCEN (art. 6 III) alongside name and address, but Vercel
+   * publishes none: ask their support, then fill it in (the build warns meanwhile).
+   */
+  phone: null as string | null,
 } as const;

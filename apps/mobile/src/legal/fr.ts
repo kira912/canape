@@ -19,14 +19,14 @@ export const fr: LegalTexts = {
       {
         heading: "Hébergement",
         blocks: [
-          `${HOST.name}, ${HOST.address}, États-Unis — ${HOST.website}`,
+          [HOST.name, `${HOST.address}, États-Unis`, HOST.phone, HOST.website].filter(Boolean).join(" — "),
           "Base de données : Neon (Neon Inc.), hébergée dans l'Union européenne (Francfort, Allemagne).",
         ],
       },
       {
         heading: "Données et marques",
         blocks: [
-          "Les informations sur les films et séries (titres, résumés, affiches, distribution) proviennent de The Movie Database (TMDB). Ce produit utilise l'API TMDB mais n'est ni approuvé ni certifié par TMDB.",
+          "Les informations sur les films et séries (titres, résumés, affiches, distribution) proviennent de The Movie Database (TMDB). Ce produit utilise TMDB et les API TMDB mais n'est ni approuvé, ni certifié, ni validé d'aucune autre manière par TMDB.",
           "Les disponibilités par plateforme sont fournies par JustWatch, via TMDB.",
           `Les noms et logos des plateformes de streaming (Netflix, Prime Video, Disney+, Canal+…) sont des marques de leurs propriétaires respectifs. ${SITE.name} n'est affilié à aucune de ces plateformes et ne donne pas accès à leurs contenus : il redirige vers elles.`,
         ],
@@ -84,7 +84,7 @@ export const fr: LegalTexts = {
           "Conservées uniquement sur votre appareil (stockage local du navigateur ou de l'application) : le jeton de session, la langue choisie et, si vous l'avez associée, l'adresse de votre téléviseur sur le réseau Wi-Fi. Ce stockage est strictement nécessaire au fonctionnement du service et ne requiert donc pas de consentement.",
           "Caméra : utilisée uniquement, et seulement si vous l'autorisez, pour lire un QR code de connexion. L'image est analysée sur votre appareil ; elle n'est ni enregistrée ni envoyée.",
           "Données techniques : comme tout site web, l'hébergeur traite l'adresse IP et les informations de connexion (journaux techniques) pour acheminer les requêtes et assurer la sécurité du service.",
-          "Mesure d'audience (site web uniquement, pas l'application mobile) : Vercel Web Analytics compte les pages vues de façon agrégée — page visitée, page de provenance, pays, type de navigateur, de système et d'appareil. Elle ne dépose aucun cookie et n'enregistre pas votre adresse IP ; un visiteur n'est reconnu que par une empreinte anonyme renouvelée chaque jour, qui ne permet pas de vous suivre d'un jour à l'autre ni sur d'autres sites.",
+          "Mesure d'audience (site web uniquement, pas l'application mobile) : Vercel Web Analytics compte les pages vues de façon agrégée — page visitée, page de provenance, pays, type de navigateur, de système et d'appareil. Elle ne dépose aucun cookie et n'enregistre pas votre adresse IP ; un visiteur n'est reconnu que par une empreinte anonyme renouvelée chaque jour, qui ne permet pas de vous suivre d'un jour à l'autre ni sur d'autres sites. Vous pouvez vous y opposer en activant « Global Privacy Control » ou « Ne pas me pister » dans votre navigateur : la mesure n'est alors plus chargée.",
         ],
       },
       {

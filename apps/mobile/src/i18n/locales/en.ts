@@ -237,7 +237,7 @@ export const en: Translations = {
     deleteConfirm: "Delete permanently",
     cancel: "Cancel",
     attribution:
-      "Movie and series data: TMDB. Platform availability: JustWatch.\nThis product uses the TMDB API but is not endorsed or certified by TMDB.",
+      "Movie and series data: TMDB. Platform availability: JustWatch.\nThis product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.",
   },
   welcome: {
     tagline: "Search all your platforms at once, on your own or together.",

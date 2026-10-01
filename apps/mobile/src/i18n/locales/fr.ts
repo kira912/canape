@@ -236,7 +236,7 @@ export const fr = {
     deleteConfirm: "Supprimer définitivement",
     cancel: "Annuler",
     attribution:
-      "Données films et séries : TMDB. Disponibilités par plateforme : JustWatch.\nCe produit utilise l'API TMDB mais n'est ni approuvé ni certifié par TMDB.",
+      "Données films et séries : TMDB. Disponibilités par plateforme : JustWatch.\nCe produit utilise TMDB et les API TMDB mais n'est ni approuvé, ni certifié, ni validé d'aucune autre manière par TMDB.",
   },
   welcome: {
     tagline: "Cherchez sur toutes vos plateformes à la fois, seul ou à deux.",

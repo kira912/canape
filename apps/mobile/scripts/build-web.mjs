@@ -58,3 +58,6 @@ if (!env.EXPO_PUBLIC_CONTACT_EMAIL && site.includes("contact@example.com")) {
     "\n⚠️  Legal pages: no contact email. Set EXPO_PUBLIC_CONTACT_EMAIL (or edit src/constants/site.ts) before going live.\n",
   );
 }
+if (site.includes("phone: null")) {
+  console.warn("\n⚠️  Legal notice: no phone number for the host (HOST.phone in src/constants/site.ts), required by the LCEN.\n");
+}

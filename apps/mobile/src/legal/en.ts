@@ -19,14 +19,14 @@ export const en: LegalTexts = {
       {
         heading: "Hosting",
         blocks: [
-          `${HOST.name}, ${HOST.address}, USA — ${HOST.website}`,
+          [HOST.name, `${HOST.address}, USA`, HOST.phone, HOST.website].filter(Boolean).join(" — "),
           "Database: Neon (Neon Inc.), hosted in the European Union (Frankfurt, Germany).",
         ],
       },
       {
         heading: "Data and trademarks",
         blocks: [
-          "Movie and series information (titles, overviews, posters, cast) comes from The Movie Database (TMDB). This product uses the TMDB API but is not endorsed or certified by TMDB.",
+          "Movie and series information (titles, overviews, posters, cast) comes from The Movie Database (TMDB). This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.",
           "Platform availability is provided by JustWatch, through TMDB.",
           `Streaming platform names and logos (Netflix, Prime Video, Disney+, Canal+…) are trademarks of their respective owners. ${SITE.name} is not affiliated with any of them and gives no access to their content: it redirects to them.`,
         ],
@@ -84,7 +84,7 @@ export const en: LegalTexts = {
           "Kept only on your device (browser or app local storage): the session token, your language and, if you paired one, your TV's address on the Wi-Fi network. This storage is strictly necessary for the service and therefore requires no consent.",
           "Camera: used only, and only if you allow it, to read a sign-in QR code. The image is analysed on your device; it is neither saved nor sent.",
           "Technical data: like any website, the host processes IP addresses and connection information (technical logs) to route requests and keep the service secure.",
-          "Audience measurement (website only, not the mobile app): Vercel Web Analytics counts page views in aggregate — page visited, referring page, country, browser, operating system and device type. It sets no cookie and does not store your IP address; a visitor is only recognised by an anonymous fingerprint reset every day, which cannot follow you from one day to the next or across other sites.",
+          "Audience measurement (website only, not the mobile app): Vercel Web Analytics counts page views in aggregate — page visited, referring page, country, browser, operating system and device type. It sets no cookie and does not store your IP address; a visitor is only recognised by an anonymous fingerprint reset every day, which cannot follow you from one day to the next or across other sites. You can object by turning on Global Privacy Control or Do Not Track in your browser: the measurement is then no longer loaded.",
         ],
       },
       {

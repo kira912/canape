@@ -1,5 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { SUPPORTED_LANGUAGES, type Household } from "@canape/shared";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -131,6 +132,13 @@ export default function SettingsScreen() {
               style={isWide ? styles.signOutWide : undefined}
             />
             <DeleteMyData lastMember={me.data.household.members.length <= 1} />
+            {/* TMDB's terms require its logo, less prominent than ours. */}
+            <Image
+              source={require("../../assets/tmdb-logo.png")}
+              style={styles.tmdbLogo}
+              contentFit="contain"
+              accessibilityLabel="TMDB"
+            />
             <Text style={styles.attribution}>{t("household.attribution")}</Text>
             <LegalLinks />
           </View>
@@ -443,5 +451,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   deleteButtonLabel: { color: colors.text, fontSize: 15, fontWeight: "600" },
+  tmdbLogo: { width: 91, height: 12, alignSelf: "center" },
   attribution: { color: colors.textMuted, fontSize: 11, textAlign: "center", lineHeight: 16 },
 });
