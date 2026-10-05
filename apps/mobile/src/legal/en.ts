@@ -74,7 +74,9 @@ export const en: LegalTexts = {
             "the platforms ticked by the household;",
             "your favourites lists, titles marked “already watched” and your Match votes;",
             "for each signed-in device: a session token (stored only as an irreversible hash) and when it was last used;",
-            "when signing in by QR code: the new device's browser and system type (for example “Chrome · macOS”), shown on the approving device.",
+            "when signing in by QR code: the new device's browser and system type (for example “Chrome · macOS”), shown on the approving device;",
+            "if you create one: your recovery code, stored only as a hash;",
+            "to limit abuse (repeated code attempts, mass requests): request counters tied to a hashed fingerprint of the IP address, never the address itself.",
           ],
           "Sent without being stored in the database:",
           [
@@ -83,7 +85,7 @@ export const en: LegalTexts = {
           ],
           "Kept only on your device (browser or app local storage): the session token, your language and, if you paired one, your TV's address on the Wi-Fi network. This storage is strictly necessary for the service and therefore requires no consent.",
           "Camera: used only, and only if you allow it, to read a sign-in QR code. The image is analysed on your device; it is neither saved nor sent.",
-          "Technical data: like any website, the host processes IP addresses and connection information (technical logs) to route requests and keep the service secure.",
+          "Technical data: like any website, the host processes IP addresses and connection information (technical logs) to route requests and keep the service secure. To diagnose failures and track costs, the app adds one line per request (the address called, without search terms; duration; outcome) and per AI call (the household's internal id, without the text typed).",
           "Audience measurement (website only, not the mobile app): Vercel Web Analytics counts page views in aggregate — page visited, referring page, country, browser, operating system and device type. It sets no cookie and does not store your IP address; a visitor is only recognised by an anonymous fingerprint reset every day, which cannot follow you from one day to the next or across other sites. You can object by turning on Global Privacy Control or Do Not Track in your browser: the measurement is then no longer loaded.",
         ],
       },
@@ -118,6 +120,7 @@ export const en: LegalTexts = {
             "Household and member data: as long as you use the app, or until you delete it.",
             "A device unused for 12 months is signed out automatically; a household with no signed-in device for 12 months is deleted with all its data.",
             "QR sign-in requests: valid 5 minutes, deleted at most 24 hours after they expire.",
+            "Abuse counters: deleted at most 48 hours after they are created.",
             "Sentences sent to the AI: not stored in the database; the interpretation may stay up to 24 hours in the server's memory cache, unlinked to your identity.",
             "Host technical logs: a limited period set by the host.",
             "Audience measurement: aggregated statistics only; a visitor's anonymous fingerprint is reset every day.",
@@ -169,7 +172,7 @@ export const en: LegalTexts = {
       {
         heading: "Household and invite code",
         blocks: [
-          "A household is shared by its members: each one sees the others' names, platforms, shared list and votes. Anyone who knows the invite code can join the household, and an existing name gets that profile back on a new device. Only share this code with people you trust.",
+          "A household is shared by its members: each one sees the others' names, platforms, shared list and votes. Anyone who knows the invite code can join the household as a new member; the code can be changed at any time from the app. An existing profile can only be opened on a new device through a QR code approved from a signed-in device, or with the member's personal recovery code, to be kept private. Only share the invite code with people you trust.",
         ],
       },
       {

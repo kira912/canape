@@ -96,17 +96,7 @@
         color: #9a92a6;
       }
     </style>
-    <script>
-      document.documentElement.classList.add("js");
-    </script>
-    <script>
-      // Service workers only run in a secure context (https or localhost).
-      if ("serviceWorker" in navigator && window.isSecureContext) {
-        window.addEventListener("load", function () {
-          navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" });
-        });
-      }
-    </script>
+    <script src="/boot.js"></script>
   </head>
 
   <body>

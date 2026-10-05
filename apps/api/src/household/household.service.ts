@@ -1,8 +1,8 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
-import type { Household, Me, Session } from "@canape/shared";
+import type { Household, Me, RecoveryCode, Session } from "@canape/shared";
 import { PrismaService } from "../prisma/prisma.service";
-import { generateInviteCode, generateSessionToken, hashToken } from "./tokens";
+import { generateInviteCode, generateRecoveryCode, generateSessionToken, hashRecoveryCode, hashToken } from "./tokens";
 
 const householdInclude = {
   members: { select: { id: true, name: true, color: true }, orderBy: { createdAt: "asc" } },
@@ -40,22 +40,58 @@ export class HouseholdService {
   }
 
   /**
-   * Joins with the invite code. Joining again with an existing name (e.g. a
-   * new phone, or the app was reinstalled) signs in as that member.
+   * Joins with the invite code as a new member. The code is shared with guests
+   * and is short, so it never gives access to an existing profile: getting a
+   * profile back on another device goes through a QR pairing or the member's
+   * recovery code.
    */
   async join(input: { inviteCode: string; memberName: string; color: string }): Promise<Session> {
     const household = await this.prisma.household.findUnique({ where: { inviteCode: input.inviteCode } });
     if (!household) throw new NotFoundException("Code d'invitation inconnu");
-
-    const existing = await this.prisma.member.findFirst({
-      where: { householdId: household.id, name: { equals: input.memberName, mode: "insensitive" } },
-    });
-    const member =
-      existing ??
-      (await this.prisma.member.create({
+    await this.assertNameFree(household.id, input.memberName);
+    try {
+      const member = await this.prisma.member.create({
         data: { householdId: household.id, name: input.memberName, color: input.color },
-      }));
-    return this.openSession(member.id, household.id);
+      });
+      return await this.openSession(member.id, household.id);
+    } catch (error) {
+      if (isUniqueViolation(error)) throw nameTaken(); // same name joined concurrently
+      throw error;
+    }
+  }
+
+  /** Signs in on a new device with the member's personal recovery code. */
+  async recover(recoveryCode: string): Promise<Session> {
+    const member = await this.prisma.member.findUnique({
+      where: { recoveryCodeHash: hashRecoveryCode(recoveryCode) },
+      select: { id: true, householdId: true },
+    });
+    if (!member) throw new NotFoundException("Code de secours inconnu");
+    return this.openSession(member.id, member.householdId);
+  }
+
+  /** A new recovery code, shown once (only its hash is kept); the previous one stops working. */
+  async regenerateRecoveryCode(memberId: string): Promise<RecoveryCode> {
+    const recoveryCode = generateRecoveryCode();
+    await this.prisma.member.update({ where: { id: memberId }, data: { recoveryCodeHash: hashRecoveryCode(recoveryCode) } });
+    return { recoveryCode };
+  }
+
+  /** A new invite code for the household (e.g. after sharing it too widely); the old one stops working. */
+  async regenerateInviteCode(householdId: string): Promise<Household> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const household = await this.prisma.household.update({
+          where: { id: householdId },
+          data: { inviteCode: generateInviteCode() },
+          include: householdInclude,
+        });
+        return toHousehold(household);
+      } catch (error) {
+        if (!isUniqueViolation(error)) throw error;
+      }
+    }
+    throw new ConflictException("Impossible de générer un code d'invitation, réessayez");
   }
 
   async me(memberId: string, householdId: string): Promise<Me> {
@@ -77,14 +113,13 @@ export class HouseholdService {
     householdId: string,
     changes: { name?: string; color?: string },
   ): Promise<Household> {
-    if (changes.name) {
-      const taken = await this.prisma.member.findFirst({
-        where: { householdId, id: { not: memberId }, name: { equals: changes.name, mode: "insensitive" } },
-        select: { id: true },
-      });
-      if (taken) throw new ConflictException("Ce prénom est déjà utilisé dans le foyer");
+    if (changes.name) await this.assertNameFree(householdId, changes.name, memberId);
+    try {
+      await this.prisma.member.update({ where: { id: memberId }, data: changes });
+    } catch (error) {
+      if (isUniqueViolation(error)) throw nameTaken();
+      throw error;
     }
-    await this.prisma.member.update({ where: { id: memberId }, data: changes });
     return this.getHousehold(householdId);
   }
 
@@ -95,6 +130,9 @@ export class HouseholdService {
    */
   async deleteMember(memberId: string, householdId: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
+      // Serialises deletions within the household: the last two members leaving at once
+      // must not both see the other one remaining and leave an empty household behind.
+      await tx.$queryRaw`SELECT 1 FROM "Household" WHERE "id" = ${householdId} FOR UPDATE`;
       await tx.member.delete({ where: { id: memberId } });
       if ((await tx.member.count({ where: { householdId } })) === 0) {
         await tx.household.delete({ where: { id: householdId } });
@@ -102,8 +140,14 @@ export class HouseholdService {
     });
   }
 
-  async closeSession(token: string): Promise<void> {
-    await this.prisma.session.deleteMany({ where: { tokenHash: hashToken(token) } });
+  async closeSession(sessionId: string): Promise<void> {
+    await this.prisma.session.deleteMany({ where: { id: sessionId } });
+  }
+
+  /** Signs the member out everywhere but on this device (lost phone, a session opened by someone else…). */
+  async closeOtherSessions(memberId: string, sessionId: string): Promise<number> {
+    const { count } = await this.prisma.session.deleteMany({ where: { memberId, id: { not: sessionId } } });
+    return count;
   }
 
   /** A new device session for the member (sign-up, join, QR pairing). */
@@ -111,6 +155,19 @@ export class HouseholdService {
     const token = generateSessionToken();
     await this.prisma.session.create({ data: { memberId, tokenHash: hashToken(token) } });
     return { token, ...(await this.me(memberId, householdId)) };
+  }
+
+  /** Names are unique per household, case-insensitively (the database index alone is case-sensitive). */
+  private async assertNameFree(householdId: string, name: string, exceptMemberId?: string) {
+    const taken = await this.prisma.member.findFirst({
+      where: {
+        householdId,
+        ...(exceptMemberId ? { id: { not: exceptMemberId } } : {}),
+        name: { equals: name, mode: "insensitive" },
+      },
+      select: { id: true },
+    });
+    if (taken) throw nameTaken();
   }
 
   private async getHousehold(householdId: string): Promise<Household> {
@@ -128,6 +185,10 @@ function toHousehold(row: HouseholdRow): Household {
     providerIds: row.providerIds,
     members: row.members,
   };
+}
+
+function nameTaken() {
+  return new ConflictException("Ce prénom est déjà utilisé dans le foyer");
 }
 
 function isUniqueViolation(error: unknown): boolean {

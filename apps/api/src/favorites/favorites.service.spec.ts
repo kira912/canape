@@ -1,4 +1,5 @@
-import type { TitleSummary } from "@canape/shared";
+import { ConflictException, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
+import { MAX_FAVORITES_PER_LIST, type TitleSummary } from "@canape/shared";
 import type { CatalogService } from "../catalog/catalog.service";
 import type { PrismaService } from "../prisma/prisma.service";
 import { FavoritesService } from "./favorites.service";
@@ -19,11 +20,21 @@ const summary = (tmdbId: number): TitleSummary => ({
   offers: [],
 });
 
-function setup(rows: object[] = [], titles: TitleSummary[] = []) {
+function setup(
+  rows: object[] = [],
+  titles: TitleSummary[] = [],
+  { count = 0, existing = null as object | null, lookup = async (): Promise<TitleSummary[]> => titles } = {},
+) {
   const prisma = {
-    favorite: { findMany: jest.fn(async (_args: { where: unknown }) => rows), upsert: jest.fn(), deleteMany: jest.fn() },
+    favorite: {
+      findMany: jest.fn(async (_args: { where: unknown }) => rows),
+      findUnique: jest.fn(async (_args: unknown) => existing),
+      count: jest.fn(async (_args: unknown) => count),
+      upsert: jest.fn(),
+      deleteMany: jest.fn(),
+    },
   };
-  const catalog = { getSummaries: jest.fn(async () => titles) };
+  const catalog = { getSummaries: jest.fn(lookup) };
   const service = new FavoritesService(prisma as unknown as PrismaService, catalog as unknown as CatalogService);
   return { service, prisma, catalog };
 }
@@ -37,6 +48,49 @@ describe("FavoritesService", () => {
 
     expect(prisma.favorite.upsert.mock.calls[0][0].create).toMatchObject({ listKey: "m1", ownerId: "m1", addedById: "m1" });
     expect(prisma.favorite.upsert.mock.calls[1][0].create).toMatchObject({ listKey: "household", ownerId: null });
+  });
+
+  it("refuses a title TMDB doesn't know", async () => {
+    const { service, prisma } = setup([], [], {
+      lookup: async () => {
+        throw new NotFoundException();
+      },
+    });
+
+    await expect(service.add(member, { list: "me", mediaType: "movie", tmdbId: 999999999 })).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(prisma.favorite.upsert).not.toHaveBeenCalled();
+  });
+
+  it("still adds the title when TMDB is unavailable", async () => {
+    const { service, prisma } = setup([], [], {
+      lookup: async () => {
+        throw new ServiceUnavailableException();
+      },
+    });
+
+    await service.add(member, { list: "me", mediaType: "movie", tmdbId: 42 });
+
+    expect(prisma.favorite.upsert).toHaveBeenCalled();
+  });
+
+  it("refuses to grow a full list", async () => {
+    const { service, prisma } = setup([], [], { count: MAX_FAVORITES_PER_LIST });
+
+    await expect(service.add(member, { list: "household", mediaType: "movie", tmdbId: 42 })).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(prisma.favorite.upsert).not.toHaveBeenCalled();
+  });
+
+  it("re-adding a title already in the list is a no-op, even when the list is full", async () => {
+    const { service, prisma, catalog } = setup([], [], { count: MAX_FAVORITES_PER_LIST, existing: { id: "f1" } });
+
+    await service.add(member, { list: "household", mediaType: "movie", tmdbId: 42 });
+
+    expect(catalog.getSummaries).not.toHaveBeenCalled();
+    expect(prisma.favorite.upsert).not.toHaveBeenCalled();
   });
 
   it("only removes from the requested list", async () => {

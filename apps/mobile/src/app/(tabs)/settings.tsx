@@ -28,6 +28,9 @@ import {
   useLeaveHousehold,
   useMe,
   useProviders,
+  useRegenerateInviteCode,
+  useRegenerateRecoveryCode,
+  useSignOutOtherDevices,
   useUpdateMember,
   useUpdateProviders,
 } from "../../lib/queries";
@@ -88,10 +91,7 @@ export default function SettingsScreen() {
               {solo ? t("tabs.profileHeader") : t("tabs.householdHeader")}
             </PageTitle>
             <HouseholdCard household={me.data.household} memberId={me.data.memberId} />
-            <OtherDeviceCard
-              inviteCode={me.data.household.inviteCode}
-              name={me.data.household.members.find((m) => m.id === me.data.memberId)?.name ?? ""}
-            />
+            <OtherDeviceCard />
             <LanguagePicker />
             <TvSection />
             <Text style={styles.sectionTitle}>{t("household.platforms")}</Text>
@@ -131,6 +131,7 @@ export default function SettingsScreen() {
               onPress={() => leave.mutate()}
               style={isWide ? styles.signOutWide : undefined}
             />
+            <SignOutOtherDevices />
             <DeleteMyData lastMember={me.data.household.members.length <= 1} />
             {/* TMDB's terms require its logo, less prominent than ours. */}
             <Image
@@ -250,22 +251,55 @@ function HouseholdCard({ household, memberId }: { household: Household; memberId
           <Text style={styles.shareLabel}>{t("household.share")}</Text>
         </Pressable>
       </View>
+      <InviteCodeRotation />
+    </View>
+  );
+}
+
+/** Two steps: replacing the code locks out whoever only has the old one (a guest, a leaked message…). */
+function InviteCodeRotation() {
+  const { t } = useTranslation();
+  const [confirming, setConfirming] = useState(false);
+  const rotate = useRegenerateInviteCode();
+
+  if (!confirming) {
+    return (
+      <Pressable onPress={() => setConfirming(true)} accessibilityRole="button" style={styles.textLink}>
+        <Text style={styles.textLinkLabel}>{t("household.inviteRotate")}</Text>
+      </Pressable>
+    );
+  }
+  return (
+    <View style={styles.confirmBox}>
+      <Text style={styles.soloIntro}>{t("household.inviteRotateWarning")}</Text>
+      {rotate.error ? <Text style={styles.error}>{errorMessage(t, rotate.error)}</Text> : null}
+      <View style={styles.confirmActions}>
+        <Button label={t("household.cancel")} variant="ghost" onPress={() => setConfirming(false)} />
+        <Button
+          label={rotate.isPending ? "…" : t("household.inviteRotateConfirm")}
+          onPress={() => !rotate.isPending && rotate.mutate(undefined, { onSuccess: () => setConfirming(false) })}
+        />
+      </View>
     </View>
   );
 }
 
 /**
- * There is no account: the invite code + the same first name is how a member
- * gets their profile back on another device (see HouseholdService.join).
+ * There is no account. Another device signs in by scanning a QR code from this
+ * one, or — when no signed-in device is at hand — with the member's personal
+ * recovery code, generated here and shown once (see HouseholdService.recover).
  */
-function OtherDeviceCard({ inviteCode, name }: { inviteCode: string; name: string }) {
+function OtherDeviceCard() {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
-  const message = t("household.otherDeviceMessage", { code: inviteCode, name });
+  const generate = useRegenerateRecoveryCode();
+  const code = generate.data?.recoveryCode;
   // Web: clipboard. Native: the share sheet (notes, messages to oneself…).
   const canCopy = Platform.OS === "web" && typeof navigator !== "undefined" && !!navigator.clipboard;
 
-  const onPress = () => {
+  const keep = () => {
+    if (!code) return;
+    const message = t("household.otherDeviceMessage", { code });
     if (canCopy) {
       navigator.clipboard
         .writeText(message)
@@ -292,35 +326,63 @@ function OtherDeviceCard({ inviteCode, name }: { inviteCode: string; name: strin
         <Text style={styles.shareLabel}>{t("household.otherDeviceScan")}</Text>
       </Pressable>
       <Text style={styles.soloIntro}>{t("household.otherDeviceManual")}</Text>
-      <View style={styles.credentials}>
-        <View style={styles.credential}>
-          <Text style={styles.inviteLabel}>{t("household.inviteCode")}</Text>
-          <Text style={styles.credentialValue} selectable>
-            {inviteCode}
-          </Text>
-        </View>
-        <View style={styles.credential}>
-          <Text style={styles.inviteLabel}>{t("household.otherDeviceName")}</Text>
-          <Text style={styles.credentialValue} selectable numberOfLines={1}>
-            {name}
-          </Text>
-        </View>
-      </View>
-      <Text style={styles.inviteLabel}>{t("household.otherDeviceKeep")}</Text>
-      <Pressable style={styles.secondaryButton} onPress={onPress} accessibilityRole="button">
-        <Ionicons
-          name={copied ? "checkmark" : canCopy ? "copy-outline" : "paper-plane-outline"}
-          size={16}
-          color={colors.text}
-        />
-        <Text style={styles.secondaryLabel}>
-          {copied
-            ? t("household.otherDeviceCopied")
-            : canCopy
-              ? t("household.otherDeviceCopy")
-              : t("household.otherDeviceSend")}
-        </Text>
-      </Pressable>
+      {code ? (
+        <>
+          <View style={styles.credential}>
+            <Text style={styles.inviteLabel}>{t("household.recoveryCode")}</Text>
+            <Text style={styles.credentialValue} selectable>
+              {code}
+            </Text>
+          </View>
+          <Text style={styles.inviteLabel}>{t("household.recoveryKeep")}</Text>
+          <Pressable style={styles.secondaryButton} onPress={keep} accessibilityRole="button">
+            <Ionicons
+              name={copied ? "checkmark" : canCopy ? "copy-outline" : "paper-plane-outline"}
+              size={16}
+              color={colors.text}
+            />
+            <Text style={styles.secondaryLabel}>
+              {copied
+                ? t("household.otherDeviceCopied")
+                : canCopy
+                  ? t("household.otherDeviceCopy")
+                  : t("household.otherDeviceSend")}
+            </Text>
+          </Pressable>
+        </>
+      ) : (
+        <>
+          <Pressable
+            style={styles.secondaryButton}
+            onPress={() => !generate.isPending && generate.mutate()}
+            accessibilityRole="button"
+          >
+            <Ionicons name="key-outline" size={16} color={colors.text} />
+            <Text style={styles.secondaryLabel}>{generate.isPending ? "…" : t("household.recoveryCreate")}</Text>
+          </Pressable>
+          <Text style={styles.inviteLabel}>{t("household.recoveryReplaces")}</Text>
+        </>
+      )}
+      {generate.error ? <Text style={styles.error}>{errorMessage(t, generate.error)}</Text> : null}
+    </View>
+  );
+}
+
+/** Lost phone, or a session opened by someone else: keeps only this device signed in. */
+function SignOutOtherDevices() {
+  const { t } = useTranslation();
+  const signOut = useSignOutOtherDevices();
+  const isWide = useIsWide();
+  return (
+    <View style={styles.signOutOthers}>
+      <Button
+        label={signOut.isPending ? "…" : t("household.signOutOthers")}
+        variant="ghost"
+        onPress={() => !signOut.isPending && signOut.mutate()}
+        style={isWide ? styles.signOutWide : undefined}
+      />
+      {signOut.isSuccess ? <Text style={styles.success}>{t("household.signOutOthersDone")}</Text> : null}
+      {signOut.error ? <Text style={styles.error}>{errorMessage(t, signOut.error)}</Text> : null}
     </View>
   );
 }
@@ -381,9 +443,7 @@ const styles = StyleSheet.create({
   },
   shareLabel: { color: colors.primaryText, fontWeight: "600" },
   scanButton: { alignSelf: "flex-start" },
-  credentials: { flexDirection: "row", gap: spacing.md },
   credential: {
-    flex: 1,
     backgroundColor: colors.surfaceRaised,
     borderRadius: radius.md,
     padding: spacing.md,
@@ -409,6 +469,12 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   nameInput: { flex: 1 },
   error: { color: colors.danger, fontSize: 13 },
+  success: { color: colors.success, fontSize: 13, textAlign: "center" },
+  textLink: { alignSelf: "flex-start" },
+  textLinkLabel: { color: colors.primary, fontSize: 13, fontWeight: "600" },
+  confirmBox: { gap: spacing.sm },
+  confirmActions: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.sm },
+  signOutOthers: { gap: spacing.xs },
   sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "700", marginTop: spacing.md },
   languages: { gap: spacing.sm },
   languageChips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },

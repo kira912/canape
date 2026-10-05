@@ -12,6 +12,8 @@ export const PAIRING_TTL_SECONDS = 5 * 60;
 export const pairingSchema = z.object({
   id: z.string(),
   secret: z.string(),
+  /** Two digits displayed next to the QR, to pick on the approving device. */
+  verificationCode: z.string(),
   expiresAt: z.string(),
 });
 export type Pairing = z.infer<typeof pairingSchema>;
@@ -20,9 +22,15 @@ export type Pairing = z.infer<typeof pairingSchema>;
 export const pairingInfoSchema = z.object({
   /** Browser / OS of the new device, e.g. "Chrome · macOS". */
   device: z.string(),
+  /** The new device's code among decoys, shuffled: approving needs its screen in sight. */
+  choices: z.array(z.string()),
   expiresAt: z.string(),
 });
 export type PairingInfo = z.infer<typeof pairingInfoSchema>;
+
+/** A wrong pick cancels the pairing: guessing among the choices doesn't get a second chance. */
+export const approvePairingSchema = z.object({ verificationCode: z.string().regex(/^\d{2}$/) });
+export type ApprovePairingInput = z.infer<typeof approvePairingSchema>;
 
 export const claimPairingSchema = z.object({ secret: z.string().min(1).max(200) });
 

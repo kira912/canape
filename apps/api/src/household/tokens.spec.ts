@@ -1,4 +1,4 @@
-import { generateInviteCode, generateSessionToken, hashToken } from "./tokens";
+import { generateInviteCode, generateRecoveryCode, generateSessionToken, hashRecoveryCode, hashToken } from "./tokens";
 
 describe("tokens", () => {
   it("generates readable 6-character invite codes", () => {
@@ -10,5 +10,12 @@ describe("tokens", () => {
     expect(token.length).toBeGreaterThanOrEqual(43);
     expect(hashToken(token)).toBe(hashToken(token));
     expect(hashToken(token)).not.toContain(token);
+  });
+
+  it("generates grouped recovery codes that hash the same however they are typed", () => {
+    const code = generateRecoveryCode();
+    expect(code).toMatch(/^[A-HJKMNP-Z2-9]{4}(-[A-HJKMNP-Z2-9]{4}){3}$/);
+    expect(hashRecoveryCode(code.toLowerCase().replace(/-/g, " "))).toBe(hashRecoveryCode(code));
+    expect(generateRecoveryCode()).not.toBe(code);
   });
 });

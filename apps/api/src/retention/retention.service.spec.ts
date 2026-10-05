@@ -1,4 +1,5 @@
 import type { PrismaService } from "../prisma/prisma.service";
+import type { RateLimitService } from "../rate-limit/rate-limit.service";
 import { INACTIVITY_DAYS, RetentionService } from "./retention.service";
 
 describe("RetentionService.purgeInactive", () => {
@@ -8,7 +9,8 @@ describe("RetentionService.purgeInactive", () => {
       household: { deleteMany: jest.fn(async (_args: unknown) => ({ count: 1 })) },
       devicePairing: { deleteMany: jest.fn(async (_args: unknown) => ({ count: 2 })) },
     };
-    const service = new RetentionService(prisma as unknown as PrismaService);
+    const rateLimits = { purge: jest.fn(async (_now: Date) => 5) };
+    const service = new RetentionService(prisma as unknown as PrismaService, rateLimits as unknown as RateLimitService);
     const now = new Date("2026-10-01T00:00:00Z");
 
     const result = await service.purgeInactive(now);
@@ -24,6 +26,7 @@ describe("RetentionService.purgeInactive", () => {
     expect(prisma.devicePairing.deleteMany).toHaveBeenCalledWith({
       where: { expiresAt: { lt: new Date(now.getTime() - 24 * 60 * 60 * 1000) } },
     });
-    expect(result).toEqual({ sessions: 3, households: 1, pairings: 2 });
+    expect(rateLimits.purge).toHaveBeenCalledWith(now);
+    expect(result).toEqual({ sessions: 3, households: 1, pairings: 2, rateLimits: 5 });
   });
 });

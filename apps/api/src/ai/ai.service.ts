@@ -1,4 +1,5 @@
-import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import {
   filterTitles,
   watchableOffers,
@@ -12,15 +13,19 @@ import {
 } from "@canape/shared";
 import * as z from "zod/v4";
 import { CatalogService } from "../catalog/catalog.service";
+import { logEvent } from "../common/request-log";
 import { HOUR, TtlCache } from "../common/ttl-cache";
 import type { AuthenticatedMember } from "../household/current-member";
+import { RateLimitService } from "../rate-limit/rate-limit.service";
 import { LLM_PROVIDER, type LlmProvider } from "./llm";
 
 const MAX_RESULTS = 30;
 /** Below this many keyword matches, results are completed with genres-only ones. */
 const MIN_KEYWORD_RESULTS = 5;
-/** AI calls per household and hour (cost guard; per API instance). */
+/** AI calls per household and hour (cost guard, shared by every API instance). */
 export const AI_CALLS_PER_HOUR = 40;
+/** Default cap on AI calls per day for the whole app (circuit breaker on cost); override with AI_DAILY_LIMIT. */
+export const DEFAULT_AI_DAILY_LIMIT = 1_000;
 
 // ---------------------------------------------------------------------------
 // What the model returns (validated by structured outputs, then sanitised)
@@ -158,12 +163,17 @@ function clamp(value: number, min: number, max: number) {
 export class AiService {
   /** Interpretations are per sentence and language (results depend on the platforms, fetched each time). */
   private readonly interpretations = new TtlCache(1_000);
-  private readonly calls = new Map<string, number[]>();
+  private readonly dailyLimit: number;
 
   constructor(
     @Inject(LLM_PROVIDER) private readonly llm: LlmProvider,
     private readonly catalog: CatalogService,
-  ) {}
+    private readonly rateLimits: RateLimitService,
+    config: ConfigService,
+  ) {
+    const configured = Number.parseInt(config.get<string>("AI_DAILY_LIMIT") ?? "", 10);
+    this.dailyLimit = Number.isInteger(configured) && configured >= 0 ? configured : DEFAULT_AI_DAILY_LIMIT;
+  }
 
   /**
    * "un feel-good pas trop long dans le style d'Intouchables" → criteria (Claude)
@@ -181,12 +191,14 @@ export class AiService {
       `search/${language}/${query.trim().toLowerCase()}`,
       24 * HOUR,
       async () => {
-        this.consumeQuota(member.householdId);
-        const output = await this.llm.extract({
-          system: searchSystemPrompt(language, movieGenres, tvGenres),
-          user: `Current year: ${new Date().getFullYear()}\n<request>${query}</request>`,
-          schema: searchOutputSchema,
-        });
+        await this.consumeQuota(member.householdId);
+        const output = await this.logged("search", member.householdId, () =>
+          this.llm.extract({
+            system: searchSystemPrompt(language, movieGenres, tvGenres),
+            user: `Current year: ${new Date().getFullYear()}\n<request>${query}</request>`,
+            schema: searchOutputSchema,
+          }),
+        );
         return { summary: cleanSummary(output.summary), criteria: sanitizeSearch(output, movieGenres, tvGenres) };
       },
     );
@@ -202,13 +214,15 @@ export class AiService {
     moods: string[],
     language: AppLanguage,
   ): Promise<AiMatchCriteriaResponse> {
-    this.consumeQuota(member.householdId);
+    await this.consumeQuota(member.householdId);
     const [movieGenres, tvGenres] = await this.genres(language);
-    const output = await this.llm.extract({
-      system: compromiseSystemPrompt(language, movieGenres, tvGenres),
-      user: moods.map((mood) => `<mood>${mood}</mood>`).join("\n"),
-      schema: compromiseOutputSchema,
-    });
+    const output = await this.logged("match-criteria", member.householdId, () =>
+      this.llm.extract({
+        system: compromiseSystemPrompt(language, movieGenres, tvGenres),
+        user: moods.map((mood) => `<mood>${mood}</mood>`).join("\n"),
+        schema: compromiseOutputSchema,
+      }),
+    );
     return sanitizeCompromise(output, movieGenres, tvGenres);
   }
 
@@ -277,14 +291,31 @@ export class AiService {
     return Promise.all([this.catalog.listGenres("movie", language), this.catalog.listGenres("tv", language)]);
   }
 
-  private consumeQuota(householdId: string) {
-    const now = Date.now();
-    const recent = (this.calls.get(householdId) ?? []).filter((t) => now - t < HOUR);
-    if (recent.length >= AI_CALLS_PER_HOUR) {
-      throw new HttpException("Trop de recherches IA, réessayez plus tard", HttpStatus.TOO_MANY_REQUESTS);
+  /** One log line per model call (cost tracking): never the user's text. */
+  private async logged<T>(kind: string, householdId: string, call: () => Promise<T>): Promise<T> {
+    const started = performance.now();
+    let ok = false;
+    try {
+      const result = await call();
+      ok = true;
+      return result;
+    } finally {
+      logEvent({ level: ok ? "info" : "warn", msg: "ai_call", kind, provider: this.llm.label, householdId, ok, ms: Math.round(performance.now() - started) });
     }
-    recent.push(now);
-    this.calls.set(householdId, recent);
+  }
+
+  /** Per household, then for the whole app: both counters live in the database, not per instance. */
+  private async consumeQuota(householdId: string) {
+    await this.rateLimits.consume(
+      `ai:${householdId}`,
+      { limit: AI_CALLS_PER_HOUR, windowSeconds: 60 * 60 },
+      "Trop de recherches IA, réessayez plus tard",
+    );
+    await this.rateLimits.consume(
+      "ai-global:all",
+      { limit: this.dailyLimit, windowSeconds: 24 * 60 * 60 },
+      "Recherche IA indisponible pour aujourd'hui, réessayez demain",
+    );
   }
 }
 

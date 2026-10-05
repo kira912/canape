@@ -30,6 +30,10 @@ describe("CatalogService.search", () => {
     },
     "/movie/1": {
       id: 1,
+      title: "Dune",
+      release_date: "2021-09-15",
+      vote_average: 7.8,
+      vote_count: 9000,
       runtime: 155,
       genres: [{ id: 878, name: "Science-Fiction" }],
       "watch/providers": { results: { FR: { flatrate: [NETFLIX], rent: [PRIME] } } },
@@ -43,13 +47,13 @@ describe("CatalogService.search", () => {
     "/movie/4": { id: 4, "watch/providers": { results: { US: { flatrate: [NETFLIX] } } } },
   };
 
-  it("keeps only household-watchable titles in `available` and drops people", async () => {
+  it("returns movies and series in relevance order with their offers, without people", async () => {
     const service = new CatalogService(fakeTmdb(routes), links);
 
-    const result = await service.search("dune", [8, 119], "fr");
+    const result = await service.search("dune", [], "fr");
 
-    expect(result.available.map((t) => t.tmdbId)).toEqual([1]);
-    expect(result.available[0]).toMatchObject({
+    expect(result.items.map((t) => t.tmdbId)).toEqual([1, 3, 4]);
+    expect(result.items[0]).toMatchObject({
       title: "Dune",
       year: 2021,
       mediaType: "movie",
@@ -60,17 +64,22 @@ describe("CatalogService.search", () => {
         { providerId: 119, type: "rent" },
       ],
     });
-    // Disney not owned; the 1984 movie isn't streamable in France at all.
-    expect(result.elsewhere.map((t) => t.tmdbId)).toEqual([3, 4]);
-    expect(result.elsewhere[0].runtime).toBe(58); // series: episode length
+    expect(result.items[1].runtime).toBe(58); // series: episode length
+    // Household-independent, hence shareable by the CDN: no split without platforms.
+    expect(result).toEqual({ items: result.items });
   });
 
-  it("does not treat a rent-only offer on an owned platform as available", async () => {
+  it("still splits by platforms for app versions that send them", async () => {
     const service = new CatalogService(fakeTmdb(routes), links);
 
-    const result = await service.search("dune", [119], "fr");
+    const result = (await service.search("dune", [8, 119], "fr")) as unknown as {
+      available: { tmdbId: number }[];
+      elsewhere: { tmdbId: number }[];
+    };
 
-    expect(result.available).toEqual([]);
+    expect(result.available.map((t) => t.tmdbId)).toEqual([1]);
+    // Disney not owned; the 1984 movie isn't streamable in France at all.
+    expect(result.elsewhere.map((t) => t.tmdbId)).toEqual([3, 4]);
   });
 
   it("caches per-title details across searches", async () => {
@@ -216,5 +225,46 @@ describe("CatalogService.discover", () => {
         language: "en-US",
       }),
     );
+  });
+});
+
+describe("CatalogService.discoverRefs", () => {
+  const base = { mediaType: "movie" as const, providers: [8], genres: [], keywords: [], sort: "popularity" as const };
+
+  function pagedTmdb(totalPages: number) {
+    const get = jest.fn(async (_path: string, params: { page: number }) => ({
+      page: params.page,
+      total_pages: totalPages,
+      // Page 2 repeats the last title of page 1, as TMDB does when popularity moves between calls.
+      results: [{ id: params.page * 10 - (params.page === 2 ? 9 : 0) }, { id: params.page * 10 + 1 }],
+    }));
+    return { get } as unknown as TmdbClient & { get: jest.Mock };
+  }
+
+  it("collects the first pages as references, in order, without duplicates or per-title calls", async () => {
+    const tmdb = pagedTmdb(10);
+    const service = new CatalogService(tmdb, links);
+
+    const refs = await service.discoverRefs(base, "fr", 3);
+
+    expect(refs.map((r) => r.tmdbId)).toEqual([10, 11, 21, 30, 31]);
+    expect(tmdb.get).toHaveBeenCalledTimes(3);
+    expect(tmdb.get.mock.calls.every(([path]) => path === "/discover/movie")).toBe(true);
+  });
+
+  it("stops at the last page TMDB has", async () => {
+    const tmdb = pagedTmdb(1);
+
+    const refs = await new CatalogService(tmdb, links).discoverRefs(base, "fr", 15);
+
+    expect(refs).toHaveLength(2);
+    expect(tmdb.get).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns nothing without platforms", async () => {
+    const tmdb = pagedTmdb(5);
+
+    expect(await new CatalogService(tmdb, links).discoverRefs({ ...base, providers: [] }, "fr", 3)).toEqual([]);
+    expect(tmdb.get).not.toHaveBeenCalled();
   });
 });

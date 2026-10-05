@@ -12,8 +12,10 @@ import {
   pairingInfoSchema,
   pairingSchema,
   pairingStatusSchema,
+  recoveryCodeSchema,
   watchedSchema,
   discoverResponseSchema,
+  partitionByAvailability,
   genreSchema,
   providerSchema,
   searchResponseSchema,
@@ -23,6 +25,7 @@ import {
   type FavoriteRef,
   type Favorites,
   type JoinHouseholdInput,
+  type RecoverInput,
   type UpdateMemberInput,
   type MediaType,
   type Me,
@@ -33,12 +36,13 @@ import {
   type Watched,
   type WatchedRef,
   type Provider,
+  type SearchResponse,
 } from "@canape/shared";
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
-import { apiGet, apiRequest } from "./api-client";
+import { ApiError, apiGet, apiRequest } from "./api-client";
 import { useSession } from "./household-store";
 
 const HOUR = 60 * 60 * 1000;
@@ -93,12 +97,18 @@ export function useAllGenres(): MergedGenre[] {
 }
 
 export function useSearch(query: string, providerIds: number[]) {
-  // TMDB search is case-insensitive: one URL per query keeps the CDN cache hit rate up.
+  // TMDB search is case-insensitive and the response doesn't depend on the household:
+  // one URL per query and language, shared by everyone in the CDN cache.
   const q = query.trim().toLowerCase();
   const lang = useLanguageKey();
+  const split = useCallback(
+    (response: SearchResponse) => partitionByAvailability(response.items, providerIds),
+    [providerIds],
+  );
   return useQuery({
-    queryKey: ["search", q, providerIds, lang],
-    queryFn: () => apiGet("/search", searchResponseSchema, { q, providers: providerIds }),
+    queryKey: ["search", q, lang],
+    queryFn: () => apiGet("/search", searchResponseSchema, { q }),
+    select: split,
     enabled: q.length >= 2,
     placeholderData: keepPreviousData,
     staleTime: HOUR,
@@ -188,6 +198,41 @@ export function useJoinHousehold() {
   });
 }
 
+/** New device: signs back in with the member's personal recovery code. */
+export function useRecoverProfile() {
+  const setSession = useSession((s) => s.setSession);
+  return useMutation({
+    mutationFn: (input: RecoverInput) => apiRequest("POST", "/households/recover", sessionSchema, input),
+    onSuccess: (session) => setSession(session),
+  });
+}
+
+/** A new personal recovery code (shown once); the previous one stops working. */
+export function useRegenerateRecoveryCode() {
+  return useMutation({
+    mutationFn: () => apiRequest("POST", "/household/member/recovery-code", recoveryCodeSchema),
+  });
+}
+
+/** A new invite code for the household; the previous one stops working. */
+export function useRegenerateInviteCode() {
+  const queryClient = useQueryClient();
+  const token = useSession((s) => s.token);
+  return useMutation({
+    mutationFn: () => apiRequest("POST", "/household/invite-code", householdSchema),
+    onSuccess: (household) => {
+      const key = ["me", token];
+      const previous = queryClient.getQueryData<Me>(key);
+      if (previous) queryClient.setQueryData<Me>(key, { ...previous, household });
+    },
+  });
+}
+
+/** Signs this member out of every other device. */
+export function useSignOutOtherDevices() {
+  return useMutation({ mutationFn: () => apiRequest("DELETE", "/household/sessions/others", null) });
+}
+
 // --- QR sign-in (see packages/shared/src/pairing.ts) ---------------------------
 
 /** New device: starts a pairing whose id goes in the QR. */
@@ -225,7 +270,10 @@ export function usePairingInfo(id: string) {
 }
 
 export function useApprovePairing(id: string) {
-  return useMutation({ mutationFn: () => apiRequest("POST", `/pairings/${id}/approve`, null) });
+  return useMutation({
+    mutationFn: (verificationCode: string) =>
+      apiRequest("POST", `/pairings/${id}/approve`, null, { verificationCode }),
+  });
 }
 
 export function useLeaveHousehold() {
@@ -417,6 +465,8 @@ export function useMatchVote() {
   return useMutation({
     mutationKey: MATCH_VOTE_KEY,
     mutationFn: (vote: MatchVote) => apiRequest("POST", "/match/votes", matchVoteResultSchema, vote),
+    // A vote is an upsert server-side: safe to resend after a network or server error.
+    retry: (failures, error) => failures < 2 && error instanceof ApiError && (error.status === 0 || error.status >= 500),
     // My vote completed a match: refresh the list now rather than at the next poll.
     onSuccess: (result) => {
       if (result.match) void queryClient.invalidateQueries({ queryKey: ["match"] });

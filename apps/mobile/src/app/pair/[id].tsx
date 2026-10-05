@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import type { ComponentProps } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "../../components/Button";
 import { Seo } from "../../components/Seo";
@@ -49,6 +49,10 @@ function Approval() {
       />
     );
   }
+  // A wrong pick cancelled the pairing server-side: nothing left to approve here.
+  if (approve.error instanceof ApiError && approve.error.status === 403) {
+    return <Message icon="close-circle-outline" iconColor={colors.danger} text={t("pairing.wrongCode")} />;
+  }
   if (info.isPending) return <ActivityIndicator color={colors.primary} />;
   if (info.isError) {
     const status = info.error instanceof ApiError ? info.error.status : 0;
@@ -78,15 +82,23 @@ function Approval() {
         <Ionicons name="warning-outline" size={18} color={colors.warning} />
         <Text style={styles.warningText}>{t("pairing.approveWarning")}</Text>
       </View>
-      {approve.error ? <Text style={styles.error}>{errorMessage(t, approve.error)}</Text> : null}
-      <View style={styles.actions}>
-        <Button label={t("household.cancel")} variant="ghost" onPress={done} style={styles.action} />
-        <Button
-          label={approve.isPending ? t("welcome.pending") : t("pairing.approve")}
-          onPress={() => !approve.isPending && approve.mutate()}
-          style={styles.action}
-        />
+      <Text style={styles.pickTitle}>{t("pairing.pickCode")}</Text>
+      <View style={styles.choices}>
+        {info.data.choices.map((choice) => (
+          <Pressable
+            key={choice}
+            style={styles.choice}
+            onPress={() => !approve.isPending && approve.mutate(choice)}
+            accessibilityRole="button"
+            accessibilityLabel={choice.split("").join(" ")}
+          >
+            <Text style={styles.choiceLabel}>{choice}</Text>
+          </Pressable>
+        ))}
       </View>
+      {approve.error ? <Text style={styles.error}>{errorMessage(t, approve.error)}</Text> : null}
+      {approve.isPending ? <ActivityIndicator color={colors.primary} /> : null}
+      <Button label={t("household.cancel")} variant="ghost" onPress={done} />
     </View>
   );
 }
@@ -135,6 +147,17 @@ const styles = StyleSheet.create({
   },
   warningText: { flex: 1, color: colors.text, fontSize: 13, lineHeight: 18 },
   error: { color: colors.danger, fontSize: 13, textAlign: "center" },
-  actions: { flexDirection: "row", gap: spacing.sm, alignSelf: "stretch" },
-  action: { flex: 1 },
+  pickTitle: { color: colors.text, fontSize: 15, fontWeight: "600", textAlign: "center" },
+  choices: { flexDirection: "row", gap: spacing.md, justifyContent: "center" },
+  choice: {
+    minWidth: 72,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceRaised,
+    alignItems: "center",
+  },
+  choiceLabel: { color: colors.text, fontSize: 28, fontWeight: "800", letterSpacing: 4 },
 });

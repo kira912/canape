@@ -86,7 +86,9 @@ export class CatalogService {
 
   /**
    * TMDB's text search can't filter by platform, so each hit is enriched with
-   * its regional offers (cached) and then split available / elsewhere.
+   * its regional offers (cached). The response doesn't depend on the household:
+   * the app splits it by its own platforms, so the CDN shares one cache entry
+   * per query and language between all households.
    */
   async search(query: string, householdProviderIds: number[], language: AppLanguage): Promise<SearchResponse> {
     const page = await this.cache.getOrLoad(`search/${language}/${query.toLowerCase()}`, HOUR, () =>
@@ -104,7 +106,8 @@ export class CatalogService {
       hits.map((hit) => ({ item: hit, mediaType: hit.media_type })),
       language,
     );
-    return partitionByAvailability(items, householdProviderIds);
+    // `providers` (and this split) only for app versions released before the split moved to the app.
+    return householdProviderIds.length ? { items, ...partitionByAvailability(items, householdProviderIds) } : { items };
   }
 
   /**
@@ -113,6 +116,37 @@ export class CatalogService {
    */
   async discover(query: DiscoverQuery, language: AppLanguage): Promise<DiscoverResponse> {
     if (query.providers.length === 0) return { items: [], page: 1, totalPages: 0 };
+    const page = await this.discoverPage(query, language);
+    const items = await this.withOffers(
+      page.results.map((item) => ({ item, mediaType: query.mediaType })),
+      language,
+    );
+    return { items, page: page.page, totalPages: Math.min(page.total_pages, 500) };
+  }
+
+  /**
+   * The first `pages` discover pages as references, in TMDB's order: one list
+   * call per page and no per-title call (the Match deck is drawn this way).
+   */
+  async discoverRefs(
+    query: Omit<DiscoverQuery, "page">,
+    language: AppLanguage,
+    pages: number,
+  ): Promise<{ mediaType: MediaType; tmdbId: number }[]> {
+    if (query.providers.length === 0) return [];
+    const first = await this.discoverPage({ ...query, page: 1 }, language);
+    const last = Math.min(pages, first.total_pages, 500);
+    const rest = await Promise.all(
+      Array.from({ length: Math.max(0, last - 1) }, (_, i) => this.discoverPage({ ...query, page: i + 2 }, language)),
+    );
+    const seen = new Set<number>();
+    return [first, ...rest]
+      .flatMap((page) => page.results)
+      .filter((item) => !seen.has(item.id) && seen.add(item.id))
+      .map((item) => ({ mediaType: query.mediaType, tmdbId: item.id }));
+  }
+
+  private discoverPage(query: DiscoverQuery, language: AppLanguage): Promise<TmdbPage<TmdbListItem>> {
     const isMovie = query.mediaType === "movie";
     const dateField = isMovie ? "primary_release_date" : "first_air_date";
     const params = {
@@ -132,29 +166,26 @@ export class CatalogService {
       include_adult: false,
       page: query.page,
     };
-    const page = await this.cache.getOrLoad(`discover/${query.mediaType}/${JSON.stringify(params)}`, HOUR, () =>
+    return this.cache.getOrLoad(`discover/${query.mediaType}/${JSON.stringify(params)}`, HOUR, () =>
       this.tmdb.get<TmdbPage<TmdbListItem>>(`/discover/${query.mediaType}`, params),
     );
-    const items = await this.withOffers(
-      page.results.map((item) => ({ item, mediaType: query.mediaType })),
-      language,
-    );
-    return { items, page: page.page, totalPages: Math.min(page.total_pages, 500) };
   }
 
   async getTitle(mediaType: MediaType, tmdbId: number, language: AppLanguage): Promise<TitleDetail> {
-    const detail = await this.cache.getOrLoad(`detail/${mediaType}/${tmdbId}/${language}`, 6 * HOUR, () =>
-      this.tmdb.get<TmdbDetail>(`/${mediaType}/${tmdbId}`, {
-        language: TMDB_LOCALES[language],
-        append_to_response: "videos,watch/providers,credits",
-        include_video_language: language === "en" ? "en" : `${language},en`,
-      }),
+    const detail = await this.cache.getOrLoad(`detail/${mediaType}/${tmdbId}/${language}`, 6 * HOUR, async () =>
+      trimDetail(
+        await this.tmdb.get<TmdbDetail>(`/${mediaType}/${tmdbId}`, {
+          language: TMDB_LOCALES[language],
+          append_to_response: "videos,watch/providers,credits",
+          include_video_language: language === "en" ? "en" : `${language},en`,
+        }),
+      ),
     );
     const region = detail["watch/providers"]?.results[REGION];
     const offers = toOffers(region);
     const summary = toTitleSummary(detail, mediaType, offers);
 
-    const [watchOptions, seasons] = await Promise.all([
+    const [watchOptions, seasons, trailer] = await Promise.all([
       this.links.buildWatchOptions({
         mediaType,
         tmdbId,
@@ -165,9 +196,8 @@ export class CatalogService {
         fallbackLink: region?.link ?? `https://www.themoviedb.org/${mediaType}/${tmdbId}/watch?locale=${REGION}`,
       }),
       mediaType === "tv" ? this.seasonAvailability(tmdbId, detail) : Promise.resolve(null),
+      this.firstAvailableTrailer(trailerCandidates(detail.videos?.results, language)),
     ]);
-
-    const trailer = await this.firstAvailableTrailer(trailerCandidates(detail.videos?.results, language));
     return {
       ...summary,
       backdropUrl: imageUrl(detail.backdrop_path, "w780"),
@@ -183,13 +213,13 @@ export class CatalogService {
 
   /**
    * First trailer still online: a deleted YouTube video answers 404 on its
-   * thumbnail. At most 3 checks, cached for a day. A network error keeps the
-   * candidate rather than hiding a trailer on a transient failure.
+   * thumbnail. At most 3 checks, cached for a day. A network error or a timeout
+   * keeps the candidate rather than hiding a trailer on a transient failure.
    */
   private async firstAvailableTrailer(candidates: Trailer[]): Promise<Trailer | null> {
     for (const candidate of candidates.slice(0, 3)) {
       const online = await this.cache.getOrLoad(`yt/${candidate.thumbnailUrl}`, 24 * HOUR, () =>
-        fetch(candidate.thumbnailUrl, { method: "HEAD" })
+        fetch(candidate.thumbnailUrl, { method: "HEAD", signal: AbortSignal.timeout(3_000) })
           .then((r) => r.ok)
           .catch(() => true),
       );
@@ -262,8 +292,8 @@ export class CatalogService {
   }
 
   /**
-   * Result lists don't carry runtime or regional offers: fetch both per title
-   * in a single cached call (detail + appended watch providers).
+   * Result lists don't carry runtime or regional offers: each title is
+   * resolved through its own (cached) summary.
    */
   private async withOffers(
     entries: { item: TmdbListItem; mediaType: MediaType }[],
@@ -271,19 +301,25 @@ export class CatalogService {
   ): Promise<TitleSummary[]> {
     return Promise.all(
       entries.map(async ({ item, mediaType }) => {
-        const detail = await this.cache.getOrLoad(`summary/${mediaType}/${item.id}/${language}`, 6 * HOUR, () =>
-          this.tmdb.get<TmdbDetail>(`/${mediaType}/${item.id}`, {
-            language: TMDB_LOCALES[language],
-            append_to_response: "watch/providers",
-          }),
-        );
-        return toTitleSummary(
-          { ...item, ...detail, overview: detail.overview || item.overview },
-          mediaType,
-          toOffers(detail["watch/providers"]?.results[REGION]),
-        );
+        const summary = await this.summary(mediaType, item.id, language);
+        return summary.overview || !item.overview ? summary : { ...summary, overview: item.overview };
       }),
     );
+  }
+
+  /**
+   * Runtime and regional offers come with the detail (+ appended watch
+   * providers) in a single call. The mapped summary is what's cached: a few
+   * hundred bytes instead of a payload carrying every country's offers.
+   */
+  private summary(mediaType: MediaType, tmdbId: number, language: AppLanguage): Promise<TitleSummary> {
+    return this.cache.getOrLoad(`summary/${mediaType}/${tmdbId}/${language}`, 6 * HOUR, async () => {
+      const detail = await this.tmdb.get<TmdbDetail>(`/${mediaType}/${tmdbId}`, {
+        language: TMDB_LOCALES[language],
+        append_to_response: "watch/providers",
+      });
+      return toTitleSummary(detail, mediaType, toOffers(detail["watch/providers"]?.results[REGION]));
+    });
   }
 
   private regionProviders(path: string): Promise<TmdbRegionProviders | undefined> {
@@ -292,6 +328,16 @@ export class CatalogService {
       return payload.results[REGION];
     });
   }
+}
+
+/** Keeps what the title page reads: our region's offers (TMDB sends every country's) and the main cast. */
+function trimDetail(detail: TmdbDetail): TmdbDetail {
+  const region = detail["watch/providers"]?.results[REGION];
+  return {
+    ...detail,
+    "watch/providers": { results: region ? { [REGION]: region } : {} },
+    credits: detail.credits && { cast: [...detail.credits.cast].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).slice(0, 30) },
+  };
 }
 
 function today(): string {

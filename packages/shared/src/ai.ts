@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { mediaTypeSchema, titleSummarySchema } from "./catalog";
+import { idListSchema, mediaTypeSchema, titleSummarySchema } from "./catalog";
 import { matchFiltersSchema } from "./match";
 
 /**
@@ -11,15 +11,7 @@ export const AI_QUERY_MAX_LENGTH = 200;
 
 export const aiSearchQuerySchema = z.object({
   q: z.string().trim().min(3).max(AI_QUERY_MAX_LENGTH),
-  providers: z
-    .union([z.string(), z.array(z.string())])
-    .optional()
-    .transform((raw) =>
-      (Array.isArray(raw) ? raw.join(",") : (raw ?? ""))
-        .split(",")
-        .map((p) => Number.parseInt(p.trim(), 10))
-        .filter((n) => Number.isInteger(n) && n > 0),
-    ),
+  providers: idListSchema,
 });
 export type AiSearchQuery = z.infer<typeof aiSearchQuerySchema>;
 

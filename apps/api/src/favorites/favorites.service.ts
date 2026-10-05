@@ -1,5 +1,13 @@
-import { Injectable } from "@nestjs/common";
-import type { AppLanguage, FavoriteItem, FavoriteRef, Favorites, MediaType } from "@canape/shared";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  DEFAULT_LANGUAGE,
+  MAX_FAVORITES_PER_LIST,
+  type AppLanguage,
+  type FavoriteItem,
+  type FavoriteRef,
+  type Favorites,
+  type MediaType,
+} from "@canape/shared";
 import { CatalogService } from "../catalog/catalog.service";
 import type { AuthenticatedMember } from "../household/current-member";
 import { PrismaService } from "../prisma/prisma.service";
@@ -37,17 +45,26 @@ export class FavoritesService {
     return { household: toItems(HOUSEHOLD_LIST_KEY), mine: toItems(member.memberId) };
   }
 
+  /**
+   * Listing resolves every title through TMDB, so lists are capped and only
+   * titles TMDB knows are accepted.
+   */
   async add(member: AuthenticatedMember, ref: FavoriteRef): Promise<void> {
     const listKey = listKeyFor(member, ref);
-    await this.prisma.favorite.upsert({
-      where: {
-        householdId_listKey_mediaType_tmdbId: {
-          householdId: member.householdId,
-          listKey,
-          mediaType: ref.mediaType,
-          tmdbId: ref.tmdbId,
-        },
+    const where = {
+      householdId_listKey_mediaType_tmdbId: {
+        householdId: member.householdId,
+        listKey,
+        mediaType: ref.mediaType,
+        tmdbId: ref.tmdbId,
       },
+    };
+    if (await this.prisma.favorite.findUnique({ where, select: { id: true } })) return;
+    const count = await this.prisma.favorite.count({ where: { householdId: member.householdId, listKey } });
+    if (count >= MAX_FAVORITES_PER_LIST) throw new ConflictException("Liste pleine");
+    await this.assertTitleExists(ref);
+    await this.prisma.favorite.upsert({
+      where,
       create: {
         householdId: member.householdId,
         listKey,
@@ -58,6 +75,15 @@ export class FavoritesService {
       },
       update: {},
     });
+  }
+
+  /** An unknown id is refused; TMDB being down is not a reason to refuse the favorite. */
+  private async assertTitleExists(ref: FavoriteRef) {
+    try {
+      await this.catalog.getSummaries([{ mediaType: ref.mediaType, tmdbId: ref.tmdbId }], DEFAULT_LANGUAGE);
+    } catch (error) {
+      if (error instanceof NotFoundException) throw new NotFoundException("Titre introuvable");
+    }
   }
 
   async remove(member: AuthenticatedMember, ref: FavoriteRef): Promise<void> {

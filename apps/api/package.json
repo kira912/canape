@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:deploy": "prisma migrate deploy"
+    "prisma:deploy": "prisma migrate deploy",
+    "test:integration": "jest -c jest.integration.config.js --runInBand"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

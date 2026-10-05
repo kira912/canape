@@ -1,9 +1,10 @@
 import { Body, Controller, Get, Headers, HttpCode, Param, Post, UseGuards } from "@nestjs/common";
-import { claimPairingSchema } from "@canape/shared";
+import { approvePairingSchema, claimPairingSchema } from "@canape/shared";
 import type { z } from "zod";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { CurrentMember, type AuthenticatedMember } from "../household/current-member";
 import { MemberGuard } from "../household/member.guard";
+import { RateLimit } from "../rate-limit/rate-limit.guard";
 import { PairingService } from "./pairing.service";
 
 @Controller("pairings")
@@ -12,6 +13,7 @@ export class PairingController {
 
   /** New device, signed out: starts a pairing and shows its id as a QR. */
   @Post()
+  @RateLimit("pairingCreate")
   create(@Headers("user-agent") userAgent: string | undefined) {
     return this.pairings.create(userAgent);
   }
@@ -25,11 +27,16 @@ export class PairingController {
   @Post(":id/approve")
   @UseGuards(MemberGuard)
   @HttpCode(204)
-  async approve(@Param("id") id: string, @CurrentMember() member: AuthenticatedMember) {
-    await this.pairings.approve(id, member.memberId);
+  async approve(
+    @Param("id") id: string,
+    @CurrentMember() member: AuthenticatedMember,
+    @Body(new ZodValidationPipe(approvePairingSchema)) body: z.output<typeof approvePairingSchema>,
+  ) {
+    await this.pairings.approve(id, member.memberId, body.verificationCode);
   }
 
   @Post(":id/claim")
+  @RateLimit("pairingClaim")
   @HttpCode(200)
   claim(
     @Param("id") id: string,

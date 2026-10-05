@@ -32,7 +32,7 @@ export const CACHE_PROFILES = {
 
 export type CacheProfile = keyof typeof CACHE_PROFILES;
 
-const CACHE_PROFILE_KEY = "cacheProfile";
+export const CACHE_PROFILE_KEY = "cacheProfile";
 
 /** Marks a GET route as cacheable. Routes without it stay `private, no-store`. */
 export const CacheFor = (profile: Exclude<CacheProfile, "private">) => SetMetadata(CACHE_PROFILE_KEY, profile);

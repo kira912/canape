@@ -58,6 +58,14 @@ export function PairingQr() {
           <ActivityIndicator color={colors.primary} />
         )}
       </View>
+      {pairing ? (
+        <View style={styles.codeBox}>
+          <Text style={styles.text}>{t("pairing.codeLabel")}</Text>
+          <Text style={styles.code} accessibilityLabel={pairing.verificationCode.split("").join(" ")}>
+            {pairing.verificationCode}
+          </Text>
+        </View>
+      ) : null}
       <View style={styles.waiting}>
         <ActivityIndicator size="small" color={colors.textMuted} />
         <Text style={styles.text}>{t("pairing.qrWaiting")}</Text>
@@ -72,6 +80,8 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: 20, fontWeight: "700", textAlign: "center" },
   text: { color: colors.textMuted, fontSize: 14, lineHeight: 20, textAlign: "center" },
   qr: { width: 220, height: 220, alignItems: "center", justifyContent: "center", marginVertical: spacing.sm },
+  codeBox: { alignItems: "center", gap: spacing.xs },
+  code: { color: colors.text, fontSize: 40, fontWeight: "800", letterSpacing: 8 },
   waiting: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   hint: { color: colors.textMuted, fontSize: 12, textAlign: "center" },
   error: { color: colors.danger, fontSize: 14, textAlign: "center" },
