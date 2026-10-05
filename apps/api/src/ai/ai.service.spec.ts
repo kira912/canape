@@ -1,8 +1,13 @@
 import { HttpException } from "@nestjs/common";
+import type { ConfigService } from "@nestjs/config";
 import type { Genre, TitleSummary } from "@canape/shared";
 import type { CatalogService } from "../catalog/catalog.service";
+import type { PrismaService } from "../prisma/prisma.service";
+import { RateLimitService } from "../rate-limit/rate-limit.service";
 import { AI_CALLS_PER_HOUR, AiService, cleanSummary, sanitizeCompromise, sanitizeSearch } from "./ai.service";
 import type { ClaudeClient } from "./claude.client";
+
+jest.mock("../common/request-log", () => ({ logEvent: jest.fn() }));
 
 const member = { memberId: "m1", householdId: "h1" };
 const MOVIE_GENRES: Genre[] = [
@@ -42,7 +47,26 @@ const baseOutput = {
   summary: "une comédie",
 };
 
-function setup(output: object, catalogOverrides: Partial<Record<keyof CatalogService, jest.Mock>> = {}) {
+/** The real limiting logic over in-memory counters (one window: the test runs within it). */
+class InMemoryRateLimits extends RateLimitService {
+  readonly counts = new Map<string, number>();
+
+  constructor() {
+    super(null as unknown as PrismaService);
+  }
+
+  override async hit(key: string): Promise<number> {
+    const count = (this.counts.get(key) ?? 0) + 1;
+    this.counts.set(key, count);
+    return count;
+  }
+}
+
+function setup(
+  output: object,
+  catalogOverrides: Partial<Record<keyof CatalogService, jest.Mock>> = {},
+  env: Record<string, string> = {},
+) {
   const claude = { extract: jest.fn(async () => output) } as unknown as ClaudeClient & { extract: jest.Mock };
   const catalog = {
     listGenres: jest.fn(async (type: string) => (type === "movie" ? MOVIE_GENRES : TV_GENRES)),
@@ -56,7 +80,9 @@ function setup(output: object, catalogOverrides: Partial<Record<keyof CatalogSer
     keywordId: jest.fn(async (name: string) => (name === "feel-good" ? 9713 : null)),
     ...catalogOverrides,
   } as unknown as CatalogService & Record<string, jest.Mock>;
-  return { service: new AiService(claude, catalog), claude, catalog };
+  const config = { get: (key: string) => env[key] } as unknown as ConfigService;
+  const rateLimits = new InMemoryRateLimits();
+  return { service: new AiService(claude, catalog, rateLimits, config), claude, catalog, rateLimits };
 }
 
 describe("AiService.search", () => {
@@ -134,6 +160,38 @@ describe("AiService.search", () => {
     for (let i = 0; i < AI_CALLS_PER_HOUR; i++) await service.search(member, `requête ${i}`, [], "fr");
 
     await expect(service.search(member, "une de trop", [], "fr")).rejects.toBeInstanceOf(HttpException);
+  });
+
+  it("counts the quota in the shared counters, per household", async () => {
+    const { service, rateLimits } = setup(baseOutput);
+
+    await service.search(member, "une comédie", [], "fr");
+    await service.search({ memberId: "m2", householdId: "h2" }, "un polar", [], "fr");
+
+    expect(rateLimits.counts.get("ai:h1")).toBe(1);
+    expect(rateLimits.counts.get("ai:h2")).toBe(1);
+    expect(rateLimits.counts.get("ai-global:all")).toBe(2);
+  });
+
+  it("stops every household once the app-wide daily cap is reached", async () => {
+    const { service, claude } = setup(baseOutput, {}, { AI_DAILY_LIMIT: "2" });
+
+    await service.search({ memberId: "a", householdId: "ha" }, "première", [], "fr");
+    await service.search({ memberId: "b", householdId: "hb" }, "deuxième", [], "fr");
+
+    await expect(service.search({ memberId: "c", householdId: "hc" }, "troisième", [], "fr")).rejects.toMatchObject({
+      status: 429,
+    });
+    expect(claude.extract).toHaveBeenCalledTimes(2);
+  });
+
+  it("doesn't spend the quota on an interpretation already in cache", async () => {
+    const { service, rateLimits } = setup(baseOutput);
+
+    await service.search(member, "Une comédie", [], "fr");
+    await service.search(member, "une comédie ", [], "fr");
+
+    expect(rateLimits.counts.get("ai:h1")).toBe(1);
   });
 });
 

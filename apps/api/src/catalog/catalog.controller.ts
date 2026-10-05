@@ -11,9 +11,12 @@ import {
 import { CacheFor } from "../common/cache-control";
 import { Language } from "../common/language.decorator";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { RateLimit } from "../rate-limit/rate-limit.guard";
 import { CatalogService } from "./catalog.service";
 
+/** Public and CDN-cached; each miss fans out to TMDB, hence a per-IP limit (only misses reach the API). */
 @Controller()
+@RateLimit("catalog")
 export class CatalogController {
   constructor(private readonly catalog: CatalogService) {}
 
@@ -46,6 +49,7 @@ export class CatalogController {
 
   @Get("titles/:mediaType/:id")
   @CacheFor("title")
+  @RateLimit("title")
   title(
     @Param("mediaType", new ZodValidationPipe(mediaTypeSchema)) mediaType: MediaType,
     @Param("id", ParseIntPipe) id: number,

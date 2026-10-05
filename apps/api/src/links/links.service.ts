@@ -38,7 +38,6 @@ export class LinksService {
         : [];
 
     const options: WatchOption[] = [];
-    console.log(directOptions)
     for (const offer of input.offers) {
       const provider = input.providers.get(offer.providerId);
       if (!provider) continue;

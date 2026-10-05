@@ -45,9 +45,12 @@ export const titleSummarySchema = z.object({
 });
 export type TitleSummary = z.infer<typeof titleSummarySchema>;
 
+/**
+ * TMDB relevance order, independent of the household (one CDN entry per query):
+ * the app splits it with `partitionByAvailability`.
+ */
 export const searchResponseSchema = z.object({
-  available: z.array(titleSummarySchema),
-  elsewhere: z.array(titleSummarySchema),
+  items: z.array(titleSummarySchema),
 });
 export type SearchResponse = z.infer<typeof searchResponseSchema>;
 
@@ -120,9 +123,12 @@ export type TitleDetail = z.infer<typeof titleDetailSchema>;
 // Query contracts (HTTP query strings are always strings → coerce).
 // ---------------------------------------------------------------------------
 
-/** `"8,119,337"` → `[8, 119, 337]`; empty/missing → `[]`. */
-const idListSchema = z
-  .union([z.string(), z.array(z.string())])
+/** Bounds every id list of a query string: they become upstream filters and CDN cache keys. */
+export const MAX_IDS_PER_QUERY = 50;
+
+/** `"8,119,337"` → `[8, 119, 337]`; empty/missing → `[]`; more than MAX_IDS_PER_QUERY ids → invalid. */
+export const idListSchema = z
+  .union([z.string().max(1000), z.array(z.string().max(20)).max(MAX_IDS_PER_QUERY)])
   .optional()
   .transform((raw) => {
     const joined = Array.isArray(raw) ? raw.join(",") : (raw ?? "");
@@ -130,7 +136,10 @@ const idListSchema = z
       .split(",")
       .map((part) => Number.parseInt(part.trim(), 10))
       .filter((n) => Number.isInteger(n) && n > 0);
-  });
+  })
+  .pipe(z.array(z.number()).max(MAX_IDS_PER_QUERY));
+
+const yearSchema = z.coerce.number().int().min(1900).max(2100);
 
 export const searchQuerySchema = z.object({
   q: z.string().trim().min(1).max(100),
@@ -148,11 +157,11 @@ export const discoverQuerySchema = z.object({
   /** TMDB keyword ids (any of them). Used by the AI search. */
   keywords: idListSchema,
   /** ISO 3166-1 alpha-2 production countries (any of them). Used by the AI search. */
-  originCountries: z.array(z.string().regex(/^[A-Z]{2}$/)).optional(),
-  maxRuntime: z.coerce.number().int().positive().optional(),
+  originCountries: z.array(z.string().regex(/^[A-Z]{2}$/)).max(10).optional(),
+  maxRuntime: z.coerce.number().int().positive().max(1000).optional(),
   minRating: z.coerce.number().min(0).max(10).optional(),
-  yearFrom: z.coerce.number().int().optional(),
-  yearTo: z.coerce.number().int().optional(),
+  yearFrom: yearSchema.optional(),
+  yearTo: yearSchema.optional(),
   sort: discoverSortSchema.default("popularity"),
   page: z.coerce.number().int().min(1).max(500).default(1),
 });

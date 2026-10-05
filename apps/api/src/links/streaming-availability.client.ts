@@ -5,11 +5,17 @@ import { z } from "zod";
 import { HOUR, TtlCache } from "../common/ttl-cache";
 
 const HOST = "streaming-availability.p.rapidapi.com";
+/** Best effort behind the title page: give up quickly rather than delay it. */
+const TIMEOUT_MS = 5_000;
 
 const streamingOptionSchema = z.object({
   service: z.object({ id: z.string() }).passthrough(),
   type: z.string(),
-  link: z.string().url(),
+  // Opened as-is by the app (and cached by the CDN for everyone): web links only, never javascript:/intent:…
+  link: z
+    .string()
+    .url()
+    .refine((link) => new URL(link).protocol === "https:"),
 });
 
 const showSchema = z.object({
@@ -57,7 +63,10 @@ export class StreamingAvailabilityClient {
   private async fetchOptions(mediaType: MediaType, tmdbId: number, country: string): Promise<StreamingOption[]> {
     const response = await fetch(
       `https://${HOST}/shows/${mediaType}/${tmdbId}?country=${country}&output_language=fr`,
-      { headers: { "X-RapidAPI-Key": this.apiKey!, "X-RapidAPI-Host": HOST } },
+      {
+        headers: { "X-RapidAPI-Key": this.apiKey!, "X-RapidAPI-Host": HOST },
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      },
     );
     if (response.status === 404) return [];
     if (!response.ok) throw new Error(`HTTP ${response.status}`);

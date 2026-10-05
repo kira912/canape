@@ -4,6 +4,9 @@ export const en: Translations = {
   common: {
     clear: "Clear",
     clearFilters: "Clear filters",
+    crashTitle: "Oops, something went wrong",
+    crashMessage: "This screen couldn't be displayed. Try again; if it keeps happening, restart the app.",
+    retry: "Try again",
     loadingError: "Couldn't load",
     choosePlatforms: "Choose our platforms",
     choosePlatformsFirst: "Choose your platforms first",
@@ -214,14 +217,22 @@ export const en: Translations = {
     otherDeviceIntro:
       "On the new device, open Canapé and choose “Sign in with another device”, then scan the QR code it shows.",
     otherDeviceScan: "Scan a QR code",
-    otherDeviceManual: "No camera? Choose “Join a household” on the new device and enter:",
-    otherDeviceName: "First name",
-    otherDeviceKeep:
-      "Write these two down: they are the only way to get your profile back if you change device or clear your browser.",
+    otherDeviceManual:
+      "No other signed-in device at hand (lost phone, cleared browser)? Your personal recovery code gets your profile back: “Recover my profile” on the new device.",
+    recoveryCreate: "Create my recovery code",
+    recoveryRenew: "Create a new recovery code",
+    recoveryReplaces: "A new code replaces the previous one, which stops working.",
+    recoveryCode: "Your recovery code",
+    recoveryKeep: "Write it down now: it won't be shown again. Keep it to yourself, it gives access to your profile.",
     otherDeviceCopy: "Copy",
     otherDeviceCopied: "Copied",
     otherDeviceSend: "Send to me",
-    otherDeviceMessage: "Canapé — Join a household with the code {{code}} and the first name “{{name}}”",
+    otherDeviceMessage: "Canapé — my recovery code: {{code}}",
+    inviteRotate: "Change code",
+    inviteRotateWarning: "The current code will no longer let anyone join. Members already in the household stay signed in.",
+    inviteRotateConfirm: "Change the code",
+    signOutOthers: "Sign out my other devices",
+    signOutOthersDone: "Your other devices are signed out.",
     platforms: "Our platforms",
     platformsIntro:
       "Tick the platforms you have an account on. Search first shows only what you can watch at no extra cost. Shared with the whole household.",
@@ -254,10 +265,18 @@ export const en: Translations = {
     color: "Your colour",
     householdName: "Household name (optional)",
     defaultHouseholdName: "Our couch",
-    rejoinHint: "Already a member? Enter the same first name to get your profile back on this new device.",
+    rejoinHint:
+      "Already a member? Don't create a second profile: use “Recover my profile” or show a QR code on this new device.",
+    nameTaken:
+      "This name is already taken in the household. If it's you, get your profile back with your recovery code or a QR code.",
+    recover: "Recover my profile",
+    recoveryCode: "Recovery code",
+    recoveryCodeHint: "The 16-character code created in Profile (or Household) → “Use Canapé on another device”.",
+    invalidRecoveryCode: "Unknown recovery code.",
     pending: "One moment…",
     submitCreate: "Create household",
     submitJoin: "Join",
+    submitRecover: "Recover my profile",
     seoTitle: "Find what to watch on your platforms",
     seoDescription:
       "Search for a movie or series across all your streaming platforms at once, open it in one tap and pick together with Match mode. Free, no account.",
@@ -294,8 +313,11 @@ export const en: Translations = {
     approveTitle: "Sign in this device?",
     approveAs: "It will be signed in to your profile “{{name}}” with access to your household.",
     approveWarning:
-      "Only approve if you just displayed this QR code yourself. If someone asked you to scan it, cancel.",
-    approve: "Sign in",
+      "Only approve if you just displayed this QR code yourself, on a device in front of you. If someone sent you this link or told you a number, cancel.",
+    codeLabel: "Code to pick on the other device:",
+    pickCode: "Tap the number shown on the new device:",
+    wrongCode:
+      "That's not the right number: the request is cancelled. If it really is your device, start again with the new QR code it shows.",
     approved: "Device signed in",
     approvedHint: "You can carry on on the new device.",
     expired: "This QR code has expired. Show a new one on the other device.",

@@ -302,10 +302,20 @@ function Evening({
   }, [cards.length, serverHadCards, deck.isFetching, votesInFlight, deck]);
 
   const onSwiped = (title: TitleSummary, liked: boolean) => {
-    setVoted((prev) => new Set(prev).add(titleKey(title)));
+    const key = titleKey(title);
+    setVoted((prev) => new Set(prev).add(key));
     vote.mutate(
       { mediaType: title.mediaType, tmdbId: title.tmdbId, liked },
-      { onSuccess: (result) => result.match && onMatch(result.match) },
+      {
+        onSuccess: (result) => result.match && onMatch(result.match),
+        // Not recorded (network…): the card comes back rather than silently missing a match.
+        onError: () =>
+          setVoted((prev) => {
+            const next = new Set(prev);
+            next.delete(key);
+            return next;
+          }),
+      },
     );
   };
 

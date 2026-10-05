@@ -74,7 +74,9 @@ export const fr: LegalTexts = {
             "les plateformes cochées par le foyer ;",
             "vos listes de favoris, les titres marqués « déjà vu » et vos votes en mode Match ;",
             "pour chaque appareil connecté : un jeton de session (enregistré uniquement sous forme chiffrée irréversible, « hachée ») et sa date de dernière utilisation ;",
-            "lors d'une connexion par QR code : le type de navigateur et de système du nouvel appareil (par exemple « Chrome · macOS »), affiché sur l'appareil qui valide.",
+            "lors d'une connexion par QR code : le type de navigateur et de système du nouvel appareil (par exemple « Chrome · macOS »), affiché sur l'appareil qui valide ;",
+            "si vous en créez un : votre code de secours, enregistré uniquement sous forme hachée ;",
+            "pour limiter les abus (essais répétés de codes, requêtes massives) : des compteurs de requêtes associés à une empreinte hachée de l'adresse IP, sans l'adresse elle-même.",
           ],
           "Transmises sans être conservées en base :",
           [
@@ -83,7 +85,7 @@ export const fr: LegalTexts = {
           ],
           "Conservées uniquement sur votre appareil (stockage local du navigateur ou de l'application) : le jeton de session, la langue choisie et, si vous l'avez associée, l'adresse de votre téléviseur sur le réseau Wi-Fi. Ce stockage est strictement nécessaire au fonctionnement du service et ne requiert donc pas de consentement.",
           "Caméra : utilisée uniquement, et seulement si vous l'autorisez, pour lire un QR code de connexion. L'image est analysée sur votre appareil ; elle n'est ni enregistrée ni envoyée.",
-          "Données techniques : comme tout site web, l'hébergeur traite l'adresse IP et les informations de connexion (journaux techniques) pour acheminer les requêtes et assurer la sécurité du service.",
+          "Données techniques : comme tout site web, l'hébergeur traite l'adresse IP et les informations de connexion (journaux techniques) pour acheminer les requêtes et assurer la sécurité du service. L'application y ajoute, pour diagnostiquer les pannes et suivre les coûts, une ligne par requête (adresse de la page appelée sans les termes recherchés, durée, résultat) et par appel à l'IA (identifiant interne du foyer, sans le texte saisi).",
           "Mesure d'audience (site web uniquement, pas l'application mobile) : Vercel Web Analytics compte les pages vues de façon agrégée — page visitée, page de provenance, pays, type de navigateur, de système et d'appareil. Elle ne dépose aucun cookie et n'enregistre pas votre adresse IP ; un visiteur n'est reconnu que par une empreinte anonyme renouvelée chaque jour, qui ne permet pas de vous suivre d'un jour à l'autre ni sur d'autres sites. Vous pouvez vous y opposer en activant « Global Privacy Control » ou « Ne pas me pister » dans votre navigateur : la mesure n'est alors plus chargée.",
         ],
       },
@@ -118,6 +120,7 @@ export const fr: LegalTexts = {
             "Données du foyer et des membres : tant que vous utilisez l'application, ou jusqu'à ce que vous les supprimiez.",
             "Un appareil inactif depuis 12 mois est déconnecté automatiquement ; un foyer sans plus aucun appareil connecté depuis 12 mois est supprimé avec toutes ses données.",
             "Demandes de connexion par QR code : valables 5 minutes, supprimées au plus tard 24 heures après leur expiration.",
+            "Compteurs anti-abus : supprimés au plus tard 48 heures après leur création.",
             "Phrases envoyées à l'IA : non conservées en base ; l'interprétation peut rester jusqu'à 24 heures en mémoire cache sur le serveur, sans lien avec votre identité.",
             "Journaux techniques de l'hébergeur : durée limitée fixée par l'hébergeur.",
             "Mesure d'audience : statistiques agrégées uniquement ; l'empreinte anonyme d'un visiteur est renouvelée chaque jour.",
@@ -171,7 +174,7 @@ export const fr: LegalTexts = {
       {
         heading: "Foyer et code d'invitation",
         blocks: [
-          "Un foyer est partagé par ses membres : chacun voit les prénoms, les plateformes, la liste commune et les votes des autres. Le code d'invitation permet à quiconque le connaît de rejoindre le foyer, et un prénom déjà présent permet de retrouver ce profil sur un nouvel appareil. Ne partagez ce code qu'avec des personnes de confiance.",
+          "Un foyer est partagé par ses membres : chacun voit les prénoms, les plateformes, la liste commune et les votes des autres. Le code d'invitation permet à quiconque le connaît de rejoindre le foyer comme nouveau membre ; il peut être changé à tout moment depuis l'application. Un profil existant ne se retrouve sur un nouvel appareil que par un QR code validé depuis un appareil déjà connecté, ou par le code de secours personnel du membre, à garder pour soi. Ne partagez le code d'invitation qu'avec des personnes de confiance.",
         ],
       },
       {

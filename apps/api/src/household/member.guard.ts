@@ -30,6 +30,7 @@ export class MemberGuard implements CanActivate {
       memberId: session.member.id,
       householdId: session.member.householdId,
     } satisfies AuthenticatedMember;
+    request.sessionId = session.id;
     return true;
   }
 }

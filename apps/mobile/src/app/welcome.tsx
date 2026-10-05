@@ -1,5 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { MEMBER_COLORS } from "@canape/shared";
+import { MEMBER_COLORS, RECOVERY_CODE_LENGTH } from "@canape/shared";
 import { Redirect } from "expo-router";
 import { useState, type ComponentProps, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -16,7 +16,7 @@ import { ApiError } from "../lib/api-client";
 import { errorMessage } from "../lib/error-message";
 import { useSession } from "../lib/household-store";
 import { centered, FORM_MAX_WIDTH } from "../lib/layout";
-import { useCreateHousehold, useJoinHousehold } from "../lib/queries";
+import { useCreateHousehold, useJoinHousehold, useRecoverProfile } from "../lib/queries";
 
 const FEATURES = [
   { icon: "tv-outline", key: "platforms" },
@@ -27,9 +27,9 @@ const FEATURES = [
 
 /**
  * "start": solo in one tap (a household of one, invite later); "create"/"join": shared household forms;
- * "pair": sign in by QR code from an already signed-in device.
+ * "pair": sign in by QR code from an already signed-in device; "recover": with the member's recovery code.
  */
-type Mode = "start" | "create" | "join" | "pair";
+type Mode = "start" | "create" | "join" | "pair" | "recover";
 
 export default function WelcomeScreen() {
   const { t } = useTranslation();
@@ -40,18 +40,26 @@ export default function WelcomeScreen() {
   const [color, setColor] = useState<string>(MEMBER_COLORS[0]);
   const [householdName, setHouseholdName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
   const create = useCreateHousehold();
   const join = useJoinHousehold();
+  const recover = useRecoverProfile();
 
   if (token) return <Redirect href="/" />;
 
-  const pending = create.isPending || join.isPending;
-  const failure = mode === "join" ? join.error : create.error;
+  const pending = create.isPending || join.isPending || recover.isPending;
+  const failure = mode === "join" ? join.error : mode === "recover" ? recover.error : create.error;
+  const status = failure instanceof ApiError ? failure.status : null;
   const error = !failure
     ? null
-    : failure instanceof ApiError && failure.status === 404 && mode === "join"
+    : mode === "join" && status === 404
       ? t("errors.invalidInviteCode")
-      : errorMessage(t, failure);
+      : mode === "join" && status === 409
+        ? t("welcome.nameTaken")
+        : mode === "recover" && (status === 404 || status === 400)
+          ? t("welcome.invalidRecoveryCode")
+          : errorMessage(t, failure);
+  const canRecover = recoveryCode.replace(/[^a-z0-9]/gi, "").length === RECOVERY_CODE_LENGTH && !pending;
   const canSubmit = memberName.trim().length > 0 && (mode === "create" || inviteCode.trim().length === 6) && !pending;
 
   const startSolo = () =>
@@ -98,12 +106,35 @@ export default function WelcomeScreen() {
               <Button label={t("welcome.together")} variant="ghost" onPress={() => setMode("create")} />
               <Button label={t("welcome.join")} variant="ghost" onPress={() => setMode("join")} />
               <Button label={t("pairing.welcomeButton")} variant="ghost" onPress={() => setMode("pair")} />
+              <Button label={t("welcome.recover")} variant="ghost" onPress={() => setMode("recover")} />
               <Features />
             </>
           ) : mode === "pair" ? (
             <>
               <BackLink onPress={() => setMode("start")} />
               <PairingQr />
+            </>
+          ) : mode === "recover" ? (
+            <>
+              <BackLink onPress={() => setMode("start")} />
+              <Field label={t("welcome.recoveryCode")}>
+                <TextField
+                  value={recoveryCode}
+                  onChangeText={(v) => setRecoveryCode(v.toUpperCase())}
+                  placeholder="XXXX-XXXX-XXXX-XXXX"
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  maxLength={24}
+                  style={styles.recoveryInput}
+                  onSubmitEditing={() => canRecover && recover.mutate({ recoveryCode })}
+                />
+              </Field>
+              <Text style={styles.hint}>{t("welcome.recoveryCodeHint")}</Text>
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+              <Button
+                label={pending ? t("welcome.pending") : t("welcome.submitRecover")}
+                onPress={() => canRecover && recover.mutate({ recoveryCode })}
+              />
             </>
           ) : (
             <>
@@ -240,6 +271,7 @@ const styles = StyleSheet.create({
   field: { gap: spacing.sm },
   label: { color: colors.text, fontSize: 14, fontWeight: "600" },
   codeInput: { fontSize: 22, fontWeight: "700", letterSpacing: 6, textAlign: "center" },
+  recoveryInput: { fontSize: 18, fontWeight: "700", letterSpacing: 2, textAlign: "center" },
   colors: { flexDirection: "row", gap: spacing.md },
   swatch: { width: 36, height: 36, borderRadius: 18, borderWidth: 3, borderColor: "transparent" },
   swatchSelected: { borderColor: colors.text },

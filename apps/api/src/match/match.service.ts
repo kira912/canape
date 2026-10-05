@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { z } from "zod";
 import {
+  DEFAULT_LANGUAGE,
   matchFiltersSchema,
   type AppLanguage,
   type MatchDeck,
@@ -17,8 +19,10 @@ import { PrismaService } from "../prisma/prisma.service";
 
 /** Cards returned per deck request; the app asks for more when it runs low. */
 export const DECK_SIZE = 10;
-/** Discover pages scanned per request (20 titles each), to bound latency once many titles are voted. */
-const MAX_PAGES_SCANNED = 8;
+/** Discover pages drawn when an evening starts (20 titles each): enough cards for a long evening. */
+export const DECK_PAGES = 15;
+
+const deckSchema = z.array(z.string().regex(/^(movie|tv)\/\d+$/)).catch([]);
 
 const titleKey = (mediaType: string, tmdbId: number) => `${mediaType}/${tmdbId}`;
 
@@ -38,15 +42,19 @@ export class MatchService {
     return { session: session ? toSession(session) : null, matches, canMatch: memberCount >= 2 };
   }
 
-  /** Starts a new evening; the previous one is closed (its votes and matches stay in the database). */
+  /**
+   * Starts a new evening; the previous one is closed (its votes and matches stay in the database).
+   * The deck is drawn now, once: every member gets the same order for the whole evening.
+   */
   async start(member: AuthenticatedMember, filters: MatchFilters): Promise<MatchSession> {
+    const deck = await this.drawDeck(member.householdId, filters);
     const [, session] = await this.prisma.$transaction([
       this.prisma.matchSession.updateMany({
         where: { householdId: member.householdId, closedAt: null },
         data: { closedAt: new Date() },
       }),
       this.prisma.matchSession.create({
-        data: { householdId: member.householdId, filters, createdById: member.memberId },
+        data: { householdId: member.householdId, filters, createdById: member.memberId, deck },
       }),
     ]);
     return toSession(session);
@@ -63,15 +71,12 @@ export class MatchService {
   /**
    * Next cards for this member. Excludes titles they already voted on and titles
    * seen by anyone in the household. Titles the others liked come first (without
-   * saying so), then the evening's discover results in a stable order shared by
-   * every member.
+   * saying so), then the evening's deck in its stored order, shared by every member.
    */
   async deck(member: AuthenticatedMember, language: AppLanguage): Promise<MatchDeck> {
     const session = await this.requireActiveSession(member.householdId);
-    const filters = matchFiltersSchema.parse(session.filters);
-
-    const [household, votes, watched] = await Promise.all([
-      this.prisma.household.findUniqueOrThrow({ where: { id: member.householdId }, select: { providerIds: true } }),
+    const [deck, votes, watched] = await Promise.all([
+      this.sessionDeck(session),
       this.prisma.matchVote.findMany({
         where: { sessionId: session.id },
         orderBy: { createdAt: "asc" },
@@ -87,31 +92,18 @@ export class MatchService {
       ...votes.filter((v) => v.memberId === member.memberId).map((v) => titleKey(v.mediaType, v.tmdbId)),
       ...watched.map((w) => titleKey(w.mediaType, w.tmdbId)),
     ]);
-    const picked: TitleSummary[] = [];
-    const take = (title: TitleSummary) => {
-      const key = titleKey(title.mediaType, title.tmdbId);
-      if (excluded.has(key) || picked.length >= DECK_SIZE) return;
-      excluded.add(key);
-      picked.push(title);
-    };
-
     const likedByOthers = votes
       .filter((v) => v.liked && v.memberId !== member.memberId)
-      .map((v) => ({ mediaType: v.mediaType as MediaType, tmdbId: v.tmdbId }))
-      .filter((ref) => !excluded.has(titleKey(ref.mediaType, ref.tmdbId)));
-    if (likedByOthers.length) {
-      (await this.catalog.getSummaries(dedupe(likedByOthers).slice(0, DECK_SIZE), language)).forEach(take);
+      .map((v) => titleKey(v.mediaType, v.tmdbId));
+    const next: string[] = [];
+    for (const key of [...likedByOthers, ...deck]) {
+      if (next.length >= DECK_SIZE) break;
+      if (excluded.has(key)) continue;
+      excluded.add(key);
+      next.push(key);
     }
-
-    for (let page = 1; page <= MAX_PAGES_SCANNED && picked.length < DECK_SIZE; page++) {
-      const results = await this.catalog.discover(
-        { ...filters, keywords: [], providers: household.providerIds, sort: "popularity", page },
-        language,
-      );
-      results.items.forEach(take);
-      if (page >= results.totalPages) break;
-    }
-    return { items: picked };
+    // Titles TMDB can't resolve anymore are dropped by getSummaries: the app asks for more when it runs low.
+    return { items: next.length ? await this.catalog.getSummaries(next.map(parseKey), language) : [] };
   }
 
   /** Records (or changes) a vote; returns the title when it completes a match. */
@@ -152,6 +144,29 @@ export class MatchService {
     return refs.length ? this.catalog.getSummaries(refs, language) : [];
   }
 
+  /** The household's discover results for these filters, as "movie/550" keys (one list call per page). */
+  private async drawDeck(householdId: string, filters: MatchFilters): Promise<string[]> {
+    const { providerIds } = await this.prisma.household.findUniqueOrThrow({
+      where: { id: householdId },
+      select: { providerIds: true },
+    });
+    const refs = await this.catalog.discoverRefs(
+      { ...filters, keywords: [], providers: providerIds, sort: "popularity" },
+      DEFAULT_LANGUAGE, // the order doesn't depend on the language; titles are fetched per request
+      DECK_PAGES,
+    );
+    return refs.map((ref) => titleKey(ref.mediaType, ref.tmdbId));
+  }
+
+  /** Evenings started before decks were stored get theirs on first use. */
+  private async sessionDeck(session: { id: string; householdId: string; filters: unknown; deck: unknown }) {
+    const stored = deckSchema.parse(session.deck);
+    if (stored.length) return stored;
+    const deck = await this.drawDeck(session.householdId, matchFiltersSchema.parse(session.filters));
+    if (deck.length) await this.prisma.matchSession.update({ where: { id: session.id }, data: { deck } });
+    return deck;
+  }
+
   private activeSession(householdId: string) {
     return this.prisma.matchSession.findFirst({
       where: { householdId, closedAt: null },
@@ -175,12 +190,7 @@ function toSession(row: { id: string; filters: unknown; createdById: string; cre
   };
 }
 
-function dedupe(refs: { mediaType: MediaType; tmdbId: number }[]) {
-  const seen = new Set<string>();
-  return refs.filter((r) => {
-    const key = titleKey(r.mediaType, r.tmdbId);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+function parseKey(key: string): { mediaType: MediaType; tmdbId: number } {
+  const [mediaType, tmdbId] = key.split("/");
+  return { mediaType: mediaType as MediaType, tmdbId: Number(tmdbId) };
 }

@@ -7,6 +7,7 @@ import { HouseholdModule } from "./household/household.module";
 import { MatchModule } from "./match/match.module";
 import { PairingModule } from "./pairing/pairing.module";
 import { PrismaModule } from "./prisma/prisma.module";
+import { RateLimitModule } from "./rate-limit/rate-limit.module";
 import { RetentionModule } from "./retention/retention.module";
 import { WatchedModule } from "./watched/watched.module";
 
@@ -14,6 +15,7 @@ import { WatchedModule } from "./watched/watched.module";
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    RateLimitModule,
     CatalogModule,
     HouseholdModule,
     FavoritesModule,

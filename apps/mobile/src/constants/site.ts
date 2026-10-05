@@ -12,7 +12,7 @@ export const SITE = {
   /** Contact for legal requests and data-protection rights. */
   contactEmail: process.env.EXPO_PUBLIC_CONTACT_EMAIL ?? "contact@example.com",
   /** Date of the current legal texts (ISO). Bump it whenever they change. */
-  legalUpdatedAt: "2026-10-01",
+  legalUpdatedAt: "2026-10-05",
 } as const;
 
 export const HOST = {

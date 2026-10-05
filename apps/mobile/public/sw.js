@@ -5,10 +5,10 @@
  *
  * Bump CACHE when the caching strategy changes: old caches are deleted on activate.
  */
-const CACHE = "canape-shell-v2";
+const CACHE = "canape-shell-v3";
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(["/", "/manifest.json"])));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(["/", "/boot.js", "/manifest.json"])));
   self.skipWaiting();
 });
 
@@ -29,6 +29,15 @@ function putInCache(request, response) {
   return response;
 }
 
+/** Only an HTML page may become the offline shell (not /sitemap.xml or an image opened in a tab). */
+function putShellInCache(response) {
+  if (response.ok && (response.headers.get("content-type") ?? "").includes("text/html")) {
+    const copy = response.clone();
+    caches.open(CACHE).then((cache) => cache.put("/", copy));
+  }
+  return response;
+}
+
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
@@ -38,7 +47,7 @@ self.addEventListener("fetch", (event) => {
     // SPA: every route is the shell. Network first (fresh deploys), cached shell when offline.
     event.respondWith(
       fetch(request)
-        .then((response) => putInCache("/", response))
+        .then((response) => putShellInCache(response))
         .catch(() => caches.match("/")),
     );
     return;
@@ -50,7 +59,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.pathname.startsWith("/icons/") || url.pathname === "/manifest.json") {
+  if (url.pathname.startsWith("/icons/") || url.pathname === "/manifest.json" || url.pathname === "/boot.js") {
     // Stable names whose content can change (e.g. new app colour): serve cached, refresh in background.
     event.respondWith(
       caches.match(request).then((hit) => {

@@ -1,12 +1,14 @@
 import "../i18n"; // initialise translations before any screen renders
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { DarkTheme, Stack, ThemeProvider } from "expo-router";
+import { DarkTheme, Stack, ThemeProvider, type ErrorBoundaryProps } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Platform } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Analytics } from "../components/Analytics";
+import { Button } from "../components/Button";
+import { EmptyState } from "../components/EmptyState";
 import { Seo } from "../components/Seo";
 import { colors } from "../constants/theme";
 import { resolvePreference } from "../i18n";
@@ -47,6 +49,26 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
+/**
+ * Last resort for a rendering error anywhere in the app: a message and a way
+ * out instead of a blank screen (which an installed PWA can't even reload).
+ * Rendered outside the providers above: no query client or theme here.
+ */
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.crash}>
+      <EmptyState icon="alert-circle-outline" title={t("common.crashTitle")} message={t("common.crashMessage")}>
+        <Button label={t("common.retry")} onPress={() => void retry()} />
+      </EmptyState>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  crash: { flex: 1, backgroundColor: colors.background, justifyContent: "center" },
+});
 
 /** Applies this device's language preference (stored with the session) to i18next. */
 function LanguageSync() {

@@ -4,6 +4,9 @@ export const fr = {
     clear: "Effacer",
     clearFilters: "Effacer les filtres",
     loadingError: "Chargement impossible",
+    crashTitle: "Oups, quelque chose s'est mal passé",
+    crashMessage: "Cet écran n'a pas pu s'afficher. Réessayez ; si le problème continue, relancez l'application.",
+    retry: "Réessayer",
     choosePlatforms: "Choisir nos plateformes",
     choosePlatformsFirst: "Choisissez d'abord vos plateformes",
     rating: "★ {{value}}+",
@@ -213,14 +216,24 @@ export const fr = {
     otherDeviceIntro:
       "Sur le nouvel appareil, ouvrez Canapé et choisissez « Se connecter avec un autre appareil », puis scannez le QR code qui s'affiche.",
     otherDeviceScan: "Scanner un QR code",
-    otherDeviceManual: "Sans caméra ? Choisissez « Rejoindre un foyer » sur le nouvel appareil et saisissez :",
-    otherDeviceName: "Prénom",
-    otherDeviceKeep:
-      "Notez ces deux informations : c'est le seul moyen de retrouver votre profil si vous changez d'appareil ou videz votre navigateur.",
+    otherDeviceManual:
+      "Pas d'autre appareil connecté sous la main (téléphone perdu, navigateur vidé) ? Votre code de secours personnel permet de retrouver votre profil : « Retrouver mon profil » sur le nouvel appareil.",
+    recoveryCreate: "Créer mon code de secours",
+    recoveryRenew: "Créer un nouveau code de secours",
+    recoveryReplaces: "Un nouveau code remplace le précédent, qui ne fonctionnera plus.",
+    recoveryCode: "Votre code de secours",
+    recoveryKeep:
+      "Notez-le maintenant : il ne sera plus affiché. Gardez-le pour vous, il donne accès à votre profil.",
     otherDeviceCopy: "Copier",
     otherDeviceCopied: "Copié",
     otherDeviceSend: "M'envoyer",
-    otherDeviceMessage: "Canapé — Rejoindre un foyer avec le code {{code}} et le prénom « {{name}} »",
+    otherDeviceMessage: "Canapé — mon code de secours : {{code}}",
+    inviteRotate: "Changer de code",
+    inviteRotateWarning:
+      "Le code actuel ne fonctionnera plus pour rejoindre le foyer. Les membres déjà présents restent connectés.",
+    inviteRotateConfirm: "Changer le code",
+    signOutOthers: "Déconnecter mes autres appareils",
+    signOutOthersDone: "Vos autres appareils sont déconnectés.",
     platforms: "Nos plateformes",
     platformsIntro:
       "Cochez les plateformes où vous avez un compte. La recherche n'affichera d'abord que ce que vous pouvez regarder sans payer en plus. Partagé avec tout le foyer.",
@@ -253,10 +266,18 @@ export const fr = {
     color: "Votre couleur",
     householdName: "Nom du foyer (facultatif)",
     defaultHouseholdName: "Notre canapé",
-    rejoinHint: "Déjà membre ? Entrez le même prénom pour retrouver votre profil sur ce nouvel appareil.",
+    rejoinHint:
+      "Déjà membre ? Ne créez pas un second profil : utilisez « Retrouver mon profil » ou un QR code affiché sur ce nouvel appareil.",
+    nameTaken:
+      "Ce prénom est déjà pris dans ce foyer. Si c'est vous, retrouvez votre profil avec votre code de secours ou un QR code.",
+    recover: "Retrouver mon profil",
+    recoveryCode: "Code de secours",
+    recoveryCodeHint: "Le code à 16 caractères créé depuis Profil (ou Foyer) → « Utiliser Canapé sur un autre appareil ».",
+    invalidRecoveryCode: "Code de secours inconnu.",
     pending: "Un instant…",
     submitCreate: "Créer le foyer",
     submitJoin: "Rejoindre",
+    submitRecover: "Retrouver mon profil",
     seoTitle: "Trouvez quoi regarder sur vos plateformes",
     seoDescription:
       "Cherchez un film ou une série sur toutes vos plateformes de streaming à la fois, ouvrez-le en un geste et choisissez à deux avec le mode Match. Gratuit, sans compte.",
@@ -294,8 +315,11 @@ export const fr = {
     approveTitle: "Connecter cet appareil ?",
     approveAs: "Il sera connecté à votre profil « {{name}} » et aura accès à votre foyer.",
     approveWarning:
-      "Ne validez que si vous venez d'afficher ce QR code vous-même. Si quelqu'un vous a demandé de le scanner, annulez.",
-    approve: "Connecter",
+      "Ne validez que si vous venez d'afficher ce QR code vous-même, sur un appareil que vous avez sous les yeux. Si quelqu'un vous a envoyé ce lien ou dicté un nombre, annulez.",
+    codeLabel: "Code à choisir sur l'autre appareil :",
+    pickCode: "Touchez le nombre affiché sur le nouvel appareil :",
+    wrongCode:
+      "Ce n'est pas le bon nombre : la demande est annulée. Si c'est bien votre appareil, recommencez avec le nouveau QR code qu'il affiche.",
     approved: "Appareil connecté",
     approvedHint: "Vous pouvez continuer sur le nouvel appareil.",
     expired: "Ce QR code a expiré. Affichez-en un nouveau sur l'autre appareil.",

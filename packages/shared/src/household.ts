@@ -56,6 +56,25 @@ export const joinHouseholdSchema = z.object({
 });
 export type JoinHouseholdInput = z.input<typeof joinHouseholdSchema>;
 
+/**
+ * Personal recovery code: signs a member back in on a new device when no
+ * signed-in device is around to approve a QR pairing. Shown grouped
+ * ("ABCD-EFGH-JKMN-PQRS"); spaces, dashes and case don't matter when typed.
+ */
+export const RECOVERY_CODE_LENGTH = 16;
+
+export const recoverSchema = z.object({
+  recoveryCode: z
+    .string()
+    .max(64)
+    .transform((value) => value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
+    .pipe(z.string().length(RECOVERY_CODE_LENGTH)),
+});
+export type RecoverInput = z.input<typeof recoverSchema>;
+
+export const recoveryCodeSchema = z.object({ recoveryCode: z.string() });
+export type RecoveryCode = z.infer<typeof recoveryCodeSchema>;
+
 export const updateProvidersSchema = z.object({ providerIds: providerIdsSchema });
 
 /** A member renames themselves (e.g. the default "Moi" of a solo start) or changes colour. */
@@ -67,6 +86,9 @@ export type UpdateMemberInput = z.input<typeof updateMemberSchema>;
 // ---------------------------------------------------------------------------
 // Favorites: one list shared by the household + one personal list per member.
 // ---------------------------------------------------------------------------
+
+/** Each list is resolved title by title through TMDB when displayed: keep it bounded. */
+export const MAX_FAVORITES_PER_LIST = 500;
 
 export const favoriteListSchema = z.enum(["household", "me"]);
 export type FavoriteList = z.infer<typeof favoriteListSchema>;

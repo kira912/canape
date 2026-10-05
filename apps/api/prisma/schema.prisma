@@ -31,6 +31,9 @@ model Member {
   household   Household   @relation(fields: [householdId], references: [id], onDelete: Cascade)
   name        String
   color       String
+  /// Personal recovery code (hashed like session tokens): signs the member in on a new device
+  /// when no signed-in device is around to approve a QR pairing. Null until generated.
+  recoveryCodeHash String? @unique
   createdAt   DateTime    @default(now())
   sessions    Session[]
   added       Favorite[]  @relation("FavoriteAddedBy")
@@ -98,6 +101,9 @@ model MatchSession {
   createdAt   DateTime    @default(now())
   /// Set when a newer evening is started.
   closedAt    DateTime?
+  /// The evening's cards in order ("movie/550"), drawn once at start so every
+  /// member swipes the same deck and a deck request needs no discover scan.
+  deck        Json        @default("[]")
   votes       MatchVote[]
 
   @@index([householdId, closedAt])
@@ -126,6 +132,9 @@ model DevicePairing {
   secretHash String    @unique
   /// "Chrome · macOS": shown on the approving device.
   device     String
+  /// Two digits shown on the new device, to pick on the approving one: approving
+  /// takes seeing the new device's screen, not just opening a link (anti-phishing).
+  verificationCode String @default("")
   /// Set on approval: the member the new device signs in as.
   memberId   String?
   member     Member?   @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -136,4 +145,12 @@ model DevicePairing {
   createdAt  DateTime  @default(now())
 
   @@index([expiresAt])
+}
+
+/// Fixed-window request counters shared by every API instance (rate limiting, AI quotas).
+/// `key` = "<bucket>:<subject>" (subject: hashed IP, household id…). Purged daily.
+model RateLimit {
+  key         String   @id
+  windowStart DateTime
+  count       Int
 }

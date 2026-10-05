@@ -63,6 +63,7 @@ Un seul projet Vercel, à la racine du monorepo : la PWA est servie par le CDN, 
    | `STREAMING_AVAILABILITY_API_KEY` | optionnelle |
    | `LLM_API_KEY` | optionnelle — clé Groq **gratuite**, active la recherche IA et le Match assisté |
    | `ANTHROPIC_API_KEY` | optionnelle, payante — utilise Claude à la place (prioritaire si renseignée) |
+   | `AI_DAILY_LIMIT` | optionnelle — plafond d'appels IA par jour pour toute l'app (défaut 1000, `0` = IA coupée) |
    | `CRON_SECRET` | chaîne aléatoire (`openssl rand -hex 32`) — protège la purge quotidienne des données inactives |
    | `EXPO_PUBLIC_CONTACT_EMAIL` | e-mail de contact affiché dans les pages légales (obligatoire) |
    | `SITE_URL` | optionnelle — domaine public (`https://…`) ; sinon le domaine de production Vercel |
@@ -107,6 +108,29 @@ ne sont pas compris par les versions plus anciennes).
 - `robots.txt` et `sitemap.xml` sont générés par `apps/mobile/scripts/build-web.mjs` (pages publiques uniquement ;
   les écrans du foyer sont `noindex`).
 
+### Limites de débit
+
+Compteurs à fenêtre fixe dans Postgres (`RateLimit`, partagés par toutes les instances serverless, purgés par le
+cron), par empreinte hachée de l'IP : `@RateLimit("…")` sur la route, politiques dans
+`apps/api/src/rate-limit/rate-limit.service.ts`. Création / join / code de secours / pairing : quelques essais par
+quart d'heure ; catalogue : 300 req/min (seules les requêtes non servies par le CDN arrivent jusqu'à l'API). Si la
+base ne répond pas, le catalogue reste accessible (les autres routes en ont besoin de toute façon).
+
+Appels TMDB : timeout 6 s, 16 en parallèle max par instance, un retry sur 429 court, ids inconnus mémorisés 10 min.
+
+### Sécurité navigateur
+
+`vercel.json` pose une **Content-Security-Policy** stricte (`script-src 'self'`, images TMDB/YouTube, réseau local
+pour la TV) : aucun script inline — ce qui doit tourner avant le bundle est dans `public/boot.js`. Le serveur local
+(`pnpm --filter @canape/api start`) applique les mêmes en-têtes, pour tester la PWA comme en production. Ajouter
+un service tiers (images, script, API appelée depuis le navigateur) ⇒ l'ajouter à la CSP.
+
+### Logs
+
+Une ligne JSON par requête API (`"msg":"request"` : id, route sans query string, statut, durée, nombre d'appels
+TMDB) et par appel IA (`"msg":"ai_call"` : type, fournisseur, foyer, durée, succès) — dans les logs Vercel. L'en-tête
+`X-Request-Id` de la réponse permet de retrouver la ligne d'un bug signalé.
+
 ### Cache
 
 | Quoi | Navigateur | CDN Vercel |
@@ -125,6 +149,17 @@ ne sont pas compris par les versions plus anciennes).
 - Le service worker ne touche jamais `/api` ; il garde l'app shell pour le hors-ligne. Changer sa stratégie ⇒
   incrémenter `CACHE` dans `apps/mobile/public/sw.js`.
 
+## Tests
+
+```bash
+pnpm test                                    # unitaires (shared, api, mobile)
+docker compose exec postgres createdb -U canape canape_test   # une fois
+TEST_DATABASE_URL=postgresql://canape:canape@localhost:5434/canape_test \
+  pnpm --filter @canape/api test:integration # vraie app + Postgres : isolation des foyers, effacement, pairing, limites
+```
+
+La base d'intégration est **vidée** à chaque passage : son nom doit contenir `test`, sinon la suite est ignorée.
+
 ## IA
 
 - **Recherche en langage naturel** (✨ dans la barre de recherche) : Claude transforme la phrase en critères
@@ -134,13 +169,19 @@ ne sont pas compris par les versions plus anciennes).
 - **Fournisseur** : Groq gratuit par défaut (`LLM_API_KEY`, modèle `openai/gpt-oss-120b` en JSON Schema strict ;
   tout service compatible OpenAI via `LLM_BASE_URL` / `LLM_MODEL`), ou Claude si `ANTHROPIC_API_KEY` est renseignée
   (`effort: "low"`, `fallbacks: "default"`). Réponses toujours revalidées par zod.
-- 40 appels/heure/foyer, interprétations en cache 24 h. Sans clé, les fonctions IA répondent 503 et le reste marche.
+- 40 appels/heure/foyer et `AI_DAILY_LIMIT` appels/jour au total (compteurs en base, partagés par toutes les
+  instances), interprétations en cache 24 h. Sans clé, les fonctions IA répondent 503 et le reste marche.
 
 ## Foyer et favoris
 
 - Premier lancement : **créer le foyer** (prénom + couleur) ou le **rejoindre** avec le code d'invitation à 6
   caractères (Foyer → Partager). Pas de mot de passe : chaque appareil reçoit un jeton de session.
-- Rejoindre avec un prénom déjà présent dans le foyer = se reconnecter à ce profil (nouveau téléphone, réinstallation).
+- Le code d'invitation ne crée que de **nouveaux** membres (un prénom déjà présent → 409) : il est court et partagé,
+  il ne doit jamais ouvrir un profil existant. Il peut être changé (Foyer → « Changer de code »).
+- Retrouver son profil sur un nouvel appareil : QR code (ci-dessous) ou **code de secours** personnel
+  (16 caractères, ~79 bits, stocké haché, affiché une seule fois ; Foyer → « Utiliser Canapé sur un autre appareil »,
+  puis Accueil → « Retrouver mon profil »).
+- Foyer → « Déconnecter mes autres appareils » supprime toutes les sessions du membre sauf celle-ci.
 - Les **plateformes** sont celles du foyer (partagées).
 - **Favoris** : une *liste commune* (avec la pastille de qui a ajouté le titre) et *ma liste* pour chacun.
   Les titres regardables chez vous sont affichés en premier.
@@ -152,7 +193,9 @@ ne sont pas compris par les versions plus anciennes).
 - **Appareil connecté** : Profil/Foyer → « Scanner un QR code » (`/scan`, expo-camera), puis validation sur
   `/pair/[id]` (aussi atteignable en scannant avec l'appareil photo du système si le navigateur est connecté).
 - Sécurité : le QR ne contient que l'id ; il faut une session pour valider, et le **secret** resté sur le nouvel
-  appareil pour recevoir la session. Valable 5 min, utilisable une seule fois (`DevicePairing`, purgé par le cron).
+  appareil pour recevoir la session. Le nouvel appareil affiche aussi **deux chiffres** à choisir parmi trois sur
+  l'appareil qui valide (un lien d'appairage envoyé par quelqu'un d'autre ne se valide donc pas en un geste) ; un
+  mauvais choix annule la demande. Valable 5 min, utilisable une seule fois (`DevicePairing`, purgé par le cron).
 - Web : le décodage passe par `BarcodeDetector` natif, sinon par zxing en WebAssembly, servi depuis notre domaine
   (`/zxing_reader.wasm`, copié au build) plutôt que depuis le CDN jsDelivr. La caméra exige HTTPS (ou localhost).
 - Natif : nécessite un nouveau build (module natif `expo-camera`, permission caméra dans `app.json`).

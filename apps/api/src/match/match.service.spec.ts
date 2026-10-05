@@ -2,10 +2,18 @@ import { NotFoundException } from "@nestjs/common";
 import type { TitleSummary } from "@canape/shared";
 import type { CatalogService } from "../catalog/catalog.service";
 import type { PrismaService } from "../prisma/prisma.service";
-import { DECK_SIZE, MatchService } from "./match.service";
+import { DECK_PAGES, DECK_SIZE, MatchService } from "./match.service";
 
 const me = { memberId: "me", householdId: "h1" };
-const session = { id: "s1", filters: { mediaType: "movie", genres: [35] }, createdById: "me", createdAt: new Date() };
+const keys = (ids: number[]) => ids.map((id) => `movie/${id}`);
+const session = {
+  id: "s1",
+  householdId: "h1",
+  filters: { mediaType: "movie", genres: [35] },
+  createdById: "me",
+  createdAt: new Date(),
+  deck: keys([1, 2, 3, 4, 5]) as unknown,
+};
 
 const title = (tmdbId: number): TitleSummary => ({
   tmdbId,
@@ -27,13 +35,14 @@ function setup({
   watched = [] as { mediaType: string; tmdbId: number }[],
   memberCount = 2,
   likeCount = 0,
-  discoverPages = [[1, 2, 3, 4, 5]] as number[][],
+  drawn = [1, 2, 3, 4, 5],
 } = {}) {
   const prisma = {
     matchSession: {
       findFirst: jest.fn(async (_args: unknown) => active),
       updateMany: jest.fn((_args: unknown) => "close"),
       create: jest.fn((_args: unknown) => "create"),
+      update: jest.fn(async (_args: unknown) => undefined),
     },
     matchVote: {
       findMany: jest.fn(async (_args: unknown) => votes),
@@ -47,11 +56,9 @@ function setup({
     $transaction: jest.fn(async (_ops: unknown[]) => [undefined, { ...session, id: "s2" }]),
   };
   const catalog = {
-    discover: jest.fn(async (query: { page: number }) => ({
-      items: (discoverPages[query.page - 1] ?? []).map(title),
-      page: query.page,
-      totalPages: discoverPages.length,
-    })),
+    discoverRefs: jest.fn(async (_query: unknown, _language: string, _pages: number) =>
+      drawn.map((tmdbId) => ({ mediaType: "movie", tmdbId })),
+    ),
     getSummaries: jest.fn(async (refs: { tmdbId: number }[]) => refs.map((r) => title(r.tmdbId))),
   };
   const service = new MatchService(prisma as unknown as PrismaService, catalog as unknown as CatalogService);
@@ -59,7 +66,7 @@ function setup({
 }
 
 describe("MatchService.deck", () => {
-  it("puts titles the partner liked first, then the shared discover order", async () => {
+  it("puts titles the partner liked first, then the evening's deck order", async () => {
     const { service, catalog } = setup({
       votes: [
         { memberId: "partner", mediaType: "movie", tmdbId: 4, liked: true },
@@ -70,10 +77,9 @@ describe("MatchService.deck", () => {
     const deck = await service.deck(me, "fr");
 
     expect(deck.items.map((t) => t.tmdbId)).toEqual([4, 1, 2, 3, 5]);
-    expect(catalog.discover).toHaveBeenCalledWith(
-      expect.objectContaining({ mediaType: "movie", genres: [35], providers: [8], sort: "popularity", page: 1 }),
-      "fr",
-    );
+    // The stored deck is served as is: no discover scan per request.
+    expect(catalog.discoverRefs).not.toHaveBeenCalled();
+    expect(catalog.getSummaries).toHaveBeenCalledTimes(1);
   });
 
   it("skips titles I already voted on and titles anyone has seen", async () => {
@@ -87,18 +93,30 @@ describe("MatchService.deck", () => {
     expect(deck.items.map((t) => t.tmdbId)).toEqual([2, 4, 5]);
   });
 
-  it("scans further pages until the deck is full", async () => {
-    const page = (start: number) => Array.from({ length: 20 }, (_, i) => start + i);
-    const { service, catalog } = setup({
-      votes: page(1).map((tmdbId) => ({ memberId: "me", mediaType: "movie", tmdbId, liked: false })),
-      discoverPages: [page(1), page(21), page(41)],
+  it("serves DECK_SIZE cards at a time, further down the deck once voted", async () => {
+    const ids = Array.from({ length: 40 }, (_, i) => i + 1);
+    const { service } = setup({
+      active: { ...session, deck: keys(ids) },
+      votes: ids.slice(0, 20).map((tmdbId) => ({ memberId: "me", mediaType: "movie", tmdbId, liked: false })),
     });
 
     const deck = await service.deck(me, "fr");
 
-    expect(deck.items).toHaveLength(DECK_SIZE);
-    expect(deck.items[0].tmdbId).toBe(21);
-    expect(catalog.discover).toHaveBeenCalledTimes(2);
+    expect(deck.items.map((t) => t.tmdbId)).toEqual(ids.slice(20, 20 + DECK_SIZE));
+  });
+
+  it("draws and stores the deck of an evening started before decks were stored", async () => {
+    const { service, prisma, catalog } = setup({ active: { ...session, deck: [] }, drawn: [7, 8] });
+
+    const deck = await service.deck(me, "fr");
+
+    expect(catalog.discoverRefs).toHaveBeenCalledWith(
+      expect.objectContaining({ mediaType: "movie", genres: [35], providers: [8], sort: "popularity" }),
+      "fr",
+      DECK_PAGES,
+    );
+    expect(prisma.matchSession.update).toHaveBeenCalledWith({ where: { id: "s1" }, data: { deck: keys([7, 8]) } });
+    expect(deck.items.map((t) => t.tmdbId)).toEqual([7, 8]);
   });
 
   it("requires an active evening", async () => {
@@ -150,6 +168,19 @@ describe("MatchService.start", () => {
     });
     expect(prisma.$transaction).toHaveBeenCalledWith(["close", "create"]);
     expect(started.id).toBe("s2");
+  });
+
+  it("draws the deck once, with the household's platforms", async () => {
+    const { service, prisma, catalog } = setup({ drawn: [10, 11] });
+
+    await service.start(me, { mediaType: "tv", genres: [18] });
+
+    expect(catalog.discoverRefs).toHaveBeenCalledWith(
+      expect.objectContaining({ mediaType: "tv", genres: [18], providers: [8], sort: "popularity" }),
+      "fr",
+      DECK_PAGES,
+    );
+    expect(prisma.matchSession.create.mock.calls[0][0]).toMatchObject({ data: { deck: keys([10, 11]) } });
   });
 });
 

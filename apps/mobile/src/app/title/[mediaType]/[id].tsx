@@ -16,7 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState, type ComponentProps, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState } from "../../../components/EmptyState";
 import { MemberDot } from "../../../components/MemberDot";
@@ -26,6 +26,7 @@ import { colors, radius, spacing } from "../../../constants/theme";
 import { errorMessage } from "../../../lib/error-message";
 import { useSession } from "../../../lib/household-store";
 import { formatRuntime } from "../../../lib/labels";
+import { openExternal } from "../../../lib/open-external";
 import { centered, useIsWide } from "../../../lib/layout";
 import {
   canOpenOnTv,
@@ -64,7 +65,7 @@ export default function TitleScreen() {
   const tv = useSession((s) => s.tv);
   const [target, setTarget] = useState<WatchOption | null>(null);
   const watch = (option: WatchOption) =>
-    tv && tvControlAvailable && canOpenOnTv(option.platform) ? setTarget(option) : void Linking.openURL(option.link);
+    tv && tvControlAvailable && canOpenOnTv(option.platform) ? setTarget(option) : void openExternal(option.link);
   const isWide = useIsWide();
   const insets = useSafeAreaInsets();
 
@@ -390,7 +391,7 @@ function WatchTargetSheet({ option, tv, onClose }: { option: WatchOption | null;
 
   const onPhone = () => {
     onClose();
-    void Linking.openURL(option.link);
+    void openExternal(option.link);
   };
   const onTv = async () => {
     setSending(true);
@@ -530,7 +531,7 @@ function TrailerCard({ url, thumbnailUrl, wide }: { url: string; thumbnailUrl: s
   return (
     <Pressable
       style={[styles.trailer, wide && styles.trailerWide]}
-      onPress={() => Linking.openURL(url)}
+      onPress={() => void openExternal(url)}
       accessibilityRole="link"
       accessibilityLabel={t("title.trailer")}
     >
