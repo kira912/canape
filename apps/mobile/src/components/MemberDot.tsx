@@ -1,6 +1,6 @@
 import type { Member } from "@canape/shared";
 import { StyleSheet, Text, View } from "react-native";
-import { colors } from "../constants/theme";
+import { colors, fonts } from "../constants/theme";
 
 /** Coloured initial identifying a household member. */
 export function MemberDot({ member, size = 18 }: { member: Member | undefined; size?: number }) {
@@ -19,5 +19,5 @@ export function MemberDot({ member, size = 18 }: { member: Member | undefined; s
 
 const styles = StyleSheet.create({
   dot: { alignItems: "center", justifyContent: "center" },
-  initial: { color: colors.primaryText, fontWeight: "800" },
+  initial: { color: colors.primaryText, fontFamily: fonts.extrabold },
 });

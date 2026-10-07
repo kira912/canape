@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, radius, spacing } from "../constants/theme";
+import { colors, radius, spacing, fonts } from "../constants/theme";
 import { useSession } from "../lib/household-store";
 import { networksToScan, requestLanAccess } from "../lib/tv/lan-access";
 import { probeSamsungTv, scanForTvs, tvControlAvailable, type SavedTv } from "../lib/tv/samsung";
@@ -135,8 +135,8 @@ export function TvSection() {
 
 const styles = StyleSheet.create({
   section: { gap: spacing.sm, marginTop: spacing.md },
-  title: { color: colors.text, fontSize: 17, fontWeight: "700" },
-  muted: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
+  title: { color: colors.text, fontSize: 20, fontFamily: fonts.display },
+  muted: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular, lineHeight: 18 },
   card: {
     flexDirection: "row",
     alignItems: "center",
@@ -148,9 +148,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   cardText: { flex: 1, gap: 2 },
-  tvName: { color: colors.text, fontSize: 15, fontWeight: "600" },
-  use: { color: colors.primary, fontWeight: "700" },
+  tvName: { color: colors.text, fontSize: 15, fontFamily: fonts.semibold },
+  use: { color: colors.primary, fontFamily: fonts.bold },
   manualRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   manualInput: { flex: 1 },
-  message: { color: colors.warning, fontSize: 13 },
+  message: { color: colors.warning, fontSize: 13, fontFamily: fonts.regular },
 });

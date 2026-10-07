@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LegalLinks } from "../../components/LegalLinks";
 import { Seo } from "../../components/Seo";
 import { SITE } from "../../constants/site";
-import { colors, spacing } from "../../constants/theme";
+import { colors, spacing, fonts } from "../../constants/theme";
 import { currentLanguage } from "../../i18n";
 import { en } from "../../legal/en";
 import { fr } from "../../legal/fr";
@@ -88,15 +88,15 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.xl, gap: spacing.md },
   back: { alignSelf: "flex-start" },
-  backLabel: { color: colors.primary, fontSize: 14, fontWeight: "600" },
-  title: { color: colors.text, fontSize: 28, fontWeight: "800" },
-  meta: { color: colors.textMuted, fontSize: 13 },
+  backLabel: { color: colors.primary, fontSize: 14, fontFamily: fonts.semibold },
+  title: { color: colors.text, fontSize: 32, fontFamily: fonts.display, letterSpacing: -0.5 },
+  meta: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.regular },
   section: { gap: spacing.sm, marginTop: spacing.md },
-  heading: { color: colors.text, fontSize: 18, fontWeight: "700" },
-  paragraph: { color: colors.text, fontSize: 15, lineHeight: 23, opacity: 0.9 },
+  heading: { color: colors.text, fontSize: 20, fontFamily: fonts.display },
+  paragraph: { color: colors.text, fontSize: 15, fontFamily: fonts.regular, lineHeight: 23, opacity: 0.9 },
   list: { gap: spacing.xs },
   item: { flexDirection: "row", gap: spacing.sm },
-  bullet: { color: colors.primary, fontSize: 15, lineHeight: 23 },
+  bullet: { color: colors.primary, fontSize: 15, fontFamily: fonts.regular, lineHeight: 23 },
   itemText: { flex: 1 },
   footer: {
     marginTop: spacing.xl,

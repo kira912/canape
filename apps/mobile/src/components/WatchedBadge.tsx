@@ -1,7 +1,7 @@
 import type { Member } from "@canape/shared";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
-import { colors, spacing } from "../constants/theme";
+import { colors, spacing, fonts } from "../constants/theme";
 import { MemberDot } from "./MemberDot";
 
 /** "✓" followed by the colour dot of each member who has seen the title (no dots when alone). */
@@ -21,5 +21,5 @@ export function WatchedBadge({ watchers, showMembers = true }: { watchers: Membe
 
 const styles = StyleSheet.create({
   badge: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
-  check: { color: colors.success, fontSize: 14, fontWeight: "800" },
+  check: { color: colors.success, fontSize: 14, fontFamily: fonts.extrabold },
 });

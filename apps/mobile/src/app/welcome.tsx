@@ -1,17 +1,29 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { MEMBER_COLORS, RECOVERY_CODE_LENGTH } from "@canape/shared";
 import { Redirect } from "expo-router";
-import { useState, type ComponentProps, type ReactNode } from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Animated,
+  Easing,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "../components/Button";
 import { Chip } from "../components/Chip";
 import { LegalLinks } from "../components/LegalLinks";
+import { FadeIn, PressableScale, Reveal, useReducedMotion } from "../components/motion";
 import { PairingQr } from "../components/PairingQr";
 import { Seo } from "../components/Seo";
 import { TextField } from "../components/TextField";
-import { colors, radius, spacing } from "../constants/theme";
+import { alpha, colors, fonts, frappe, motion, radius, spacing } from "../constants/theme";
 import { ApiError } from "../lib/api-client";
 import { errorMessage } from "../lib/error-message";
 import { useSession } from "../lib/household-store";
@@ -19,11 +31,11 @@ import { centered, FORM_MAX_WIDTH } from "../lib/layout";
 import { useCreateHousehold, useJoinHousehold, useRecoverProfile } from "../lib/queries";
 
 const FEATURES = [
-  { icon: "tv-outline", key: "platforms" },
-  { icon: "open-outline", key: "open" },
-  { icon: "flame-outline", key: "match" },
-  { icon: "sparkles-outline", key: "ai" },
-] as const satisfies readonly { icon: ComponentProps<typeof Ionicons>["name"]; key: string }[];
+  { icon: "tv-outline", key: "platforms", tint: frappe.blue },
+  { icon: "open-outline", key: "open", tint: frappe.green },
+  { icon: "flame-outline", key: "match", tint: frappe.peach },
+  { icon: "sparkles-outline", key: "ai", tint: frappe.mauve },
+] as const satisfies readonly { icon: ComponentProps<typeof Ionicons>["name"]; key: string; tint: string }[];
 
 /**
  * "start": solo in one tap (a household of one, invite later); "create"/"join": shared household forms;
@@ -41,6 +53,7 @@ export default function WelcomeScreen() {
   const [householdName, setHouseholdName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
+  const [moreOpen, setMoreOpen] = useState(false);
   const create = useCreateHousehold();
   const join = useJoinHousehold();
   const recover = useRecoverProfile();
@@ -86,27 +99,45 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView style={styles.screen}>
+      <Ambience />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.flex}>
         <ScrollView
           contentContainerStyle={[styles.content, centered(FORM_MAX_WIDTH)]}
           keyboardShouldPersistTaps="handled"
         >
           <Seo title={t("welcome.seoTitle")} description={t("welcome.seoDescription")} />
-          <Text style={styles.logo} accessibilityRole="header" aria-level={1}>
-            Canapé
-          </Text>
-          <Text style={styles.tagline}>{t("welcome.tagline")}</Text>
+          <FadeIn from={20}>
+            <Text style={styles.logo} accessibilityRole="header" aria-level={1}>
+              Canap<Text style={styles.logoAccent}>é</Text>
+            </Text>
+            <Text style={styles.tagline}>{t("welcome.tagline")}</Text>
+          </FadeIn>
 
           {mode === "start" ? (
             <>
-              <Button label={pending ? t("welcome.pending") : t("welcome.start")} onPress={startSolo} />
-              <Text style={styles.hint}>{t("welcome.startHint")}</Text>
-              {error ? <Text style={styles.error}>{error}</Text> : null}
-              <View style={styles.divider} />
-              <Button label={t("welcome.together")} variant="ghost" onPress={() => setMode("create")} />
-              <Button label={t("welcome.join")} variant="ghost" onPress={() => setMode("join")} />
-              <Button label={t("pairing.welcomeButton")} variant="ghost" onPress={() => setMode("pair")} />
-              <Button label={t("welcome.recover")} variant="ghost" onPress={() => setMode("recover")} />
+              {/* Three choices, the most common first; the rarer ways in are folded away. */}
+              <FadeIn index={2} style={styles.choices}>
+                <Button label={t("welcome.start")} icon="arrow-forward" loading={pending} onPress={startSolo} />
+                <Text style={styles.hint}>{t("welcome.startHint")}</Text>
+                {error ? <Text style={styles.error}>{error}</Text> : null}
+                <Button label={t("welcome.together")} icon="people-outline" variant="ghost" onPress={() => setMode("create")} />
+                <Pressable
+                  style={styles.more}
+                  onPress={() => setMoreOpen((open) => !open)}
+                  accessibilityRole="button"
+                  aria-expanded={moreOpen}
+                >
+                  <Text style={styles.moreLabel}>{t("welcome.haveAccount")}</Text>
+                  <Ionicons name={moreOpen ? "chevron-up" : "chevron-down"} size={16} color={colors.primary} />
+                </Pressable>
+                <Reveal open={moreOpen}>
+                  <View style={styles.moreOptions}>
+                    <OptionRow icon="key-outline" label={t("welcome.join")} onPress={() => setMode("join")} />
+                    <OptionRow icon="qr-code-outline" label={t("pairing.welcomeButton")} onPress={() => setMode("pair")} />
+                    <OptionRow icon="refresh-outline" label={t("welcome.recover")} onPress={() => setMode("recover")} />
+                  </View>
+                </Reveal>
+              </FadeIn>
               <Features />
             </>
           ) : mode === "pair" ? (
@@ -132,7 +163,8 @@ export default function WelcomeScreen() {
               <Text style={styles.hint}>{t("welcome.recoveryCodeHint")}</Text>
               {error ? <Text style={styles.error}>{error}</Text> : null}
               <Button
-                label={pending ? t("welcome.pending") : t("welcome.submitRecover")}
+                label={t("welcome.submitRecover")}
+                loading={pending}
                 onPress={() => canRecover && recover.mutate({ recoveryCode })}
               />
             </>
@@ -171,13 +203,16 @@ export default function WelcomeScreen() {
               <Field label={t("welcome.color")}>
                 <View style={styles.colors}>
                   {MEMBER_COLORS.map((c) => (
-                    <Pressable
+                    <PressableScale
                       key={c}
                       onPress={() => setColor(c)}
                       accessibilityRole="radio"
                       aria-checked={color === c}
-                      style={[styles.swatch, { backgroundColor: c }, color === c && styles.swatchSelected]}
-                    />
+                      pressedScale={0.85}
+                      style={[styles.swatch, color === c && styles.swatchSelected]}
+                    >
+                      <View style={[styles.swatchFill, { backgroundColor: c }]} />
+                    </PressableScale>
                   ))}
                 </View>
               </Field>
@@ -197,13 +232,8 @@ export default function WelcomeScreen() {
 
               {error ? <Text style={styles.error}>{error}</Text> : null}
               <Button
-                label={
-                  pending
-                    ? t("welcome.pending")
-                    : mode === "create"
-                      ? t("welcome.submitCreate")
-                      : t("welcome.submitJoin")
-                }
+                label={mode === "create" ? t("welcome.submitCreate") : t("welcome.submitJoin")}
+                loading={pending}
                 onPress={submit}
               />
             </>
@@ -235,19 +265,72 @@ function Features() {
       <Text style={styles.featuresTitle} accessibilityRole="header" aria-level={2}>
         {t("welcome.featuresTitle")}
       </Text>
-      {FEATURES.map(({ icon, key }) => (
-        <View key={key} style={styles.feature}>
-          <View style={styles.featureIcon}>
-            <Ionicons name={icon} size={20} color={colors.primary} />
-          </View>
-          <View style={styles.featureText}>
+      <View style={styles.featureGrid}>
+        {FEATURES.map(({ icon, key, tint }, index) => (
+          <FadeIn key={key} index={index + 4} style={styles.feature}>
+            <View style={[styles.featureIcon, { backgroundColor: alpha(tint, 0.16) }]}>
+              <Ionicons name={icon} size={20} color={tint} />
+            </View>
             <Text style={styles.featureTitle} accessibilityRole="header" aria-level={3}>
               {t(`welcome.features.${key}Title`)}
             </Text>
             <Text style={styles.featureBody}>{t(`welcome.features.${key}Text`)}</Text>
-          </View>
-        </View>
-      ))}
+          </FadeIn>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function OptionRow({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: ComponentProps<typeof Ionicons>["name"];
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <PressableScale style={styles.option} onPress={onPress} accessibilityRole="button" pressedScale={0.98}>
+      <Ionicons name={icon} size={20} color={colors.primary} />
+      <Text style={styles.optionLabel}>{label}</Text>
+      <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
+    </PressableScale>
+  );
+}
+
+/** Slowly drifting coloured glows behind the page: the "lights dimmed, screen on" mood of an evening in. */
+function Ambience() {
+  const drift = useRef(new Animated.Value(0)).current;
+  const reduced = useReducedMotion();
+  useEffect(() => {
+    if (reduced) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(drift, { toValue: 1, duration: 9000, easing: Easing.inOut(Easing.sin), useNativeDriver: motion.native }),
+        Animated.timing(drift, { toValue: 0, duration: 9000, easing: Easing.inOut(Easing.sin), useNativeDriver: motion.native }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [drift, reduced]);
+  const move = (x: number, y: number) => ({
+    transform: [
+      { translateX: drift.interpolate({ inputRange: [0, 1], outputRange: [0, x] }) },
+      { translateY: drift.interpolate({ inputRange: [0, 1], outputRange: [0, y] }) },
+    ],
+  });
+  return (
+    <View style={styles.ambience} pointerEvents="none">
+      <Animated.View style={[styles.glow, styles.glowMauve, move(40, 30)]} />
+      <Animated.View style={[styles.glow, styles.glowPeach, move(-50, -20)]} />
+      <Animated.View style={[styles.glow, styles.glowBlue, move(30, -40)]} />
+      <LinearGradient
+        colors={[alpha(colors.background, 0), colors.background]}
+        locations={[0.2, 0.75]}
+        style={StyleSheet.absoluteFill}
+      />
     </View>
   );
 }
@@ -261,39 +344,108 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+const GLOW = 360;
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   content: { padding: spacing.xl, gap: spacing.lg, flexGrow: 1, justifyContent: "center" },
-  logo: { color: colors.primary, fontSize: 40, fontWeight: "800", textAlign: "center" },
-  tagline: { color: colors.textMuted, fontSize: 15, textAlign: "center", marginBottom: spacing.md },
+  ambience: { ...StyleSheet.absoluteFill, overflow: "hidden" },
+  glow: {
+    position: "absolute",
+    width: GLOW,
+    height: GLOW,
+    borderRadius: GLOW / 2,
+    // Web: a real blur. Native platforms keep a soft, low-opacity disc.
+    ...(Platform.OS === "web" ? ({ filter: "blur(70px)" } as object) : null),
+  },
+  glowMauve: { top: -140, left: -100, backgroundColor: alpha(frappe.mauve, Platform.OS === "web" ? 0.45 : 0.14) },
+  glowPeach: { top: -60, right: -160, backgroundColor: alpha(frappe.peach, Platform.OS === "web" ? 0.3 : 0.1) },
+  glowBlue: { top: 160, left: 40, backgroundColor: alpha(frappe.blue, Platform.OS === "web" ? 0.22 : 0.08) },
+  logo: {
+    color: colors.primary,
+    fontSize: 64,
+    lineHeight: 72,
+    fontFamily: fonts.displayItalic,
+    textAlign: "center",
+    letterSpacing: -1.5,
+    marginTop: spacing.xl,
+  },
+  logoAccent: { color: colors.accent },
+  tagline: {
+    color: colors.textMuted,
+    fontSize: 16,
+    lineHeight: 23,
+    fontFamily: fonts.regular,
+    textAlign: "center",
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.md,
+  },
+  choices: { gap: spacing.md },
+  more: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: spacing.sm,
+  },
+  moreLabel: { color: colors.primary, fontSize: 14, fontFamily: fonts.bold },
+  moreOptions: {
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    overflow: "hidden",
+  },
+  option: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  optionLabel: { flex: 1, color: colors.text, fontSize: 15, fontFamily: fonts.semibold },
   modes: { flexDirection: "row", gap: spacing.sm, justifyContent: "center" },
   field: { gap: spacing.sm },
-  label: { color: colors.text, fontSize: 14, fontWeight: "600" },
-  codeInput: { fontSize: 22, fontWeight: "700", letterSpacing: 6, textAlign: "center" },
-  recoveryInput: { fontSize: 18, fontWeight: "700", letterSpacing: 2, textAlign: "center" },
-  colors: { flexDirection: "row", gap: spacing.md },
-  swatch: { width: 36, height: 36, borderRadius: 18, borderWidth: 3, borderColor: "transparent" },
+  label: { color: colors.text, fontSize: 14, fontFamily: fonts.bold },
+  codeInput: { fontSize: 24, fontFamily: fonts.extrabold, letterSpacing: 8, textAlign: "center" },
+  recoveryInput: { fontSize: 18, fontFamily: fonts.extrabold, letterSpacing: 2, textAlign: "center" },
+  colors: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
+  swatch: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    padding: 4,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  swatchFill: { flex: 1, borderRadius: 18 },
   swatchSelected: { borderColor: colors.text },
-  hint: { color: colors.textMuted, fontSize: 13, lineHeight: 18, textAlign: "center" },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginVertical: spacing.sm },
+  hint: { color: colors.textMuted, fontSize: 13, lineHeight: 19, fontFamily: fonts.regular, textAlign: "center" },
   back: { alignSelf: "flex-start" },
-  backLabel: { color: colors.primary, fontSize: 14, fontWeight: "600" },
-  error: { color: "#EB5757", fontSize: 14, textAlign: "center" },
-  features: { gap: spacing.lg, marginTop: spacing.xl },
-  featuresTitle: { color: colors.text, fontSize: 18, fontWeight: "700", textAlign: "center" },
-  feature: { flexDirection: "row", gap: spacing.md, alignItems: "flex-start" },
+  backLabel: { color: colors.primary, fontSize: 14, fontFamily: fonts.bold },
+  error: { color: colors.danger, fontSize: 14, fontFamily: fonts.semibold, textAlign: "center" },
+  features: { gap: spacing.lg, marginTop: spacing.xxl },
+  featuresTitle: { color: colors.text, fontSize: 24, fontFamily: fonts.display, textAlign: "center" },
+  featureGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
+  feature: {
+    flexGrow: 1,
+    flexBasis: 160,
+    gap: spacing.sm,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+  },
   featureIcon: {
     width: 40,
     height: 40,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
-  featureText: { flex: 1, gap: 2 },
-  featureTitle: { color: colors.text, fontSize: 15, fontWeight: "600" },
-  featureBody: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
+  featureTitle: { color: colors.text, fontSize: 15, lineHeight: 20, fontFamily: fonts.bold },
+  featureBody: { color: colors.textMuted, fontSize: 13, lineHeight: 19, fontFamily: fonts.regular },
   legal: { gap: spacing.sm, marginTop: spacing.xl },
-  consent: { color: colors.textMuted, fontSize: 12, lineHeight: 17, textAlign: "center" },
+  consent: { color: colors.textFaint, fontSize: 12, lineHeight: 17, fontFamily: fonts.regular, textAlign: "center" },
 });

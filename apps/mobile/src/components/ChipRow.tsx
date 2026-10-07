@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
-import { colors, spacing } from "../constants/theme";
+import { spacing } from "../constants/theme";
 import { useIsWide } from "../lib/layout";
 
 /**
@@ -16,12 +16,7 @@ export function ChipRow({ children }: { children: ReactNode }) {
   );
 }
 
-export function ChipSeparator() {
-  return <View style={styles.separator} />;
-}
-
 const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.lg, alignItems: "center" },
   wrap: { flexWrap: "wrap" },
-  separator: { width: 1, height: 20, backgroundColor: colors.border },
 });

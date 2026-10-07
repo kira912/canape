@@ -1,7 +1,7 @@
 import type { Provider } from "@canape/shared";
 import { Image } from "expo-image";
 import { StyleSheet, Text, View } from "react-native";
-import { colors, radius } from "../constants/theme";
+import { colors, radius, fonts } from "../constants/theme";
 
 interface Props {
   provider: Provider | undefined;
@@ -30,5 +30,5 @@ const styles = StyleSheet.create({
   base: { backgroundColor: colors.surfaceRaised },
   dimmed: { opacity: 0.35 },
   placeholder: { alignItems: "center", justifyContent: "center", borderRadius: radius.sm },
-  initial: { color: colors.text, fontWeight: "700" },
+  initial: { color: colors.text, fontFamily: fonts.bold },
 });

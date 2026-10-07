@@ -14,15 +14,16 @@ import {
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams } from "expo-router";
-import { useEffect, useState, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Animated, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState } from "../../../components/EmptyState";
 import { MemberDot } from "../../../components/MemberDot";
+import { FadeIn, PressableScale, useReducedMotion } from "../../../components/motion";
 import { ProviderLogo } from "../../../components/ProviderLogo";
 import { WatchedBadge } from "../../../components/WatchedBadge";
-import { colors, radius, spacing } from "../../../constants/theme";
+import { alpha, colors, fonts, gradients, motion, radius, spacing } from "../../../constants/theme";
 import { errorMessage } from "../../../lib/error-message";
 import { useSession } from "../../../lib/household-store";
 import { formatRuntime } from "../../../lib/labels";
@@ -68,6 +69,7 @@ export default function TitleScreen() {
     tv && tvControlAvailable && canOpenOnTv(option.platform) ? setTarget(option) : void openExternal(option.link);
   const isWide = useIsWide();
   const insets = useSafeAreaInsets();
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   if (title.isPending) {
     return (
@@ -108,11 +110,17 @@ export default function TitleScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={{ paddingBottom: stickyCta ? 110 + insets.bottom : spacing.xl * 2 }}>
-        <Hero backdropUrl={t.backdropUrl} wide={isWide} />
+      <Animated.ScrollView
+        contentContainerStyle={{ paddingBottom: stickyCta ? 110 + insets.bottom : spacing.xl * 2 }}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: motion.native,
+        })}
+        scrollEventThrottle={16}
+      >
+        <Hero backdropUrl={t.backdropUrl} wide={isWide} scrollY={scrollY} />
 
         <View style={centered()}>
-          <View style={styles.header}>
+          <FadeIn style={styles.header}>
             {t.posterUrl ? <Image source={t.posterUrl} style={[styles.poster, isWide && styles.posterWide]} /> : null}
             <View style={styles.headerText}>
               <Text style={[styles.title, isWide && styles.titleWide]}>{t.title}</Text>
@@ -126,15 +134,17 @@ export default function TitleScreen() {
               </View>
               {coverage === "partial" ? <Pill label={translate("title.partial")} color={colors.warning} /> : null}
             </View>
-          </View>
+          </FadeIn>
 
           {primary && !stickyCta ? (
-            <View style={styles.inlineCta}>
+            <FadeIn index={1} style={styles.inlineCta}>
               <PrimaryWatchButton option={primary} onWatch={watch} />
-            </View>
+            </FadeIn>
           ) : null}
 
-          <ActionRow mediaType={t.mediaType} tmdbId={t.tmdbId} onOpenWatched={() => setWatchedSheet(true)} />
+          <FadeIn index={2}>
+            <ActionRow mediaType={t.mediaType} tmdbId={t.tmdbId} onOpenWatched={() => setWatchedSheet(true)} />
+          </FadeIn>
 
           {moreMine.length || !primary || others.length ? (
             <Section title={translate("title.watch")}>
@@ -209,12 +219,18 @@ export default function TitleScreen() {
             </Section>
           ) : null}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       {stickyCta && primary ? (
-        <View style={[styles.stickyBar, { paddingBottom: spacing.md + insets.bottom }]}>
+        <FadeIn from={40} delay={200} style={[styles.stickyBar, { paddingBottom: spacing.md + insets.bottom }]}>
+          <LinearGradient
+            colors={[alpha(colors.background, 0), colors.background]}
+            locations={[0, 0.45]}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
           <PrimaryWatchButton option={primary} onWatch={watch} />
-        </View>
+        </FadeIn>
       ) : null}
 
       {tv ? <WatchTargetSheet option={target} tv={tv} onClose={() => setTarget(null)} /> : null}
@@ -229,19 +245,33 @@ export default function TitleScreen() {
   );
 }
 
-/** Backdrop fading into the page, with a light scrim on top so the back arrow stays readable. */
-function Hero({ backdropUrl, wide }: { backdropUrl: string | null; wide: boolean }) {
+/**
+ * Backdrop fading into the page, with a light scrim on top so the back arrow stays readable.
+ * Parallax: it scrolls at half speed and stretches when pulled down.
+ */
+function Hero({ backdropUrl, wide, scrollY }: { backdropUrl: string | null; wide: boolean; scrollY: Animated.Value }) {
+  const reduced = useReducedMotion();
   if (!backdropUrl) return <View style={styles.heroSpacer} />;
+  const parallax = reduced
+    ? undefined
+    : {
+        transform: [
+          { translateY: scrollY.interpolate({ inputRange: [-200, 0, 400], outputRange: [-100, 0, 200], extrapolateRight: "clamp" }) },
+          { scale: scrollY.interpolate({ inputRange: [-200, 0], outputRange: [1.6, 1], extrapolateRight: "clamp" }) },
+        ],
+      };
   return (
-    <View style={wide ? styles.heroWide : styles.hero}>
-      <Image source={backdropUrl} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+    <View style={[wide ? styles.heroWide : styles.hero, styles.heroClip]}>
+      <Animated.View style={[StyleSheet.absoluteFill, parallax]}>
+        <Image source={backdropUrl} style={StyleSheet.absoluteFill} contentFit="cover" transition={300} />
+      </Animated.View>
       <LinearGradient
-        colors={["rgba(20, 17, 26, 0.65)", "rgba(20, 17, 26, 0)"]}
+        colors={[alpha(colors.backgroundDeep, 0.7), alpha(colors.backgroundDeep, 0)]}
         style={styles.heroTopScrim}
         pointerEvents="none"
       />
       <LinearGradient
-        colors={["rgba(20, 17, 26, 0)", "rgba(20, 17, 26, 0.6)", colors.background]}
+        colors={[alpha(colors.background, 0), alpha(colors.background, 0.6), colors.background]}
         locations={[0.35, 0.7, 1]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
@@ -270,8 +300,17 @@ function Pill({ label, color }: { label: string; color?: string }) {
 function PrimaryWatchButton({ option, onWatch }: { option: WatchOption; onWatch: (option: WatchOption) => void }) {
   const { t } = useTranslation();
   return (
-    <Pressable style={styles.cta} onPress={() => onWatch(option)} accessibilityRole="button">
-      <Ionicons name="play" size={20} color={colors.primaryText} />
+    <PressableScale style={styles.cta} onPress={() => onWatch(option)} accessibilityRole="button" pressedScale={0.97}>
+      <LinearGradient
+        colors={gradients.brand}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      <View style={styles.ctaPlay}>
+        <Ionicons name="play" size={18} color={colors.primary} />
+      </View>
       <View style={styles.ctaText}>
         <Text style={styles.ctaTitle} numberOfLines={1}>
           {t("title.watchOn", { provider: option.provider.name })}
@@ -281,7 +320,7 @@ function PrimaryWatchButton({ option, onWatch }: { option: WatchOption; onWatch:
         </Text>
       </View>
       <ProviderLogo provider={option.provider} size={32} />
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -360,12 +399,13 @@ function IconAction({
 }) {
   const name: ComponentProps<typeof Ionicons>["name"] = active ? icon : `${icon}-outline`;
   return (
-    <Pressable
+    <PressableScale
       style={styles.action}
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
       aria-pressed={active}
+      pressedScale={0.9}
     >
       <View style={[styles.actionIcon, active && styles.actionIconActive]}>
         <Ionicons name={name} size={22} color={active ? colors.primaryText : colors.text} />
@@ -374,7 +414,7 @@ function IconAction({
         {label}
       </Text>
       {children}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -602,10 +642,10 @@ function SeasonRow({
 /** `flush`: content handles its own horizontal padding (e.g. an edge-to-edge carousel). */
 function Section({ title, children, flush = false }: { title: string; children: ReactNode; flush?: boolean }) {
   return (
-    <View style={[styles.section, flush && styles.sectionFlush]}>
+    <FadeIn delay={180} style={[styles.section, flush && styles.sectionFlush]}>
       <Text style={[styles.sectionTitle, flush && styles.sectionTitleFlush]}>{title}</Text>
       {children}
-    </View>
+    </FadeIn>
   );
 }
 
@@ -617,6 +657,7 @@ const styles = StyleSheet.create({
   /** 16:9 on a desktop window would be ~800px tall. */
   heroWide: { width: "100%", height: 420 },
   heroSpacer: { height: 100 },
+  heroClip: { overflow: "hidden" },
   heroTopScrim: { position: "absolute", top: 0, left: 0, right: 0, height: 110 },
 
   header: {
@@ -636,9 +677,9 @@ const styles = StyleSheet.create({
   },
   posterWide: { width: 160, height: 240 },
   headerText: { flex: 1, gap: spacing.sm, paddingBottom: spacing.xs },
-  title: { color: colors.text, fontSize: 26, fontWeight: "800", lineHeight: 31 },
+  title: { color: colors.text, fontSize: 28, fontFamily: fonts.display, lineHeight: 33, letterSpacing: -0.4 },
   titleWide: { fontSize: 34, lineHeight: 40 },
-  meta: { color: colors.textMuted, fontSize: 14 },
+  meta: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.regular },
   badges: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.xs },
   rating: {
     flexDirection: "row",
@@ -647,9 +688,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     borderRadius: radius.pill,
-    backgroundColor: "rgba(242, 201, 76, 0.15)",
+    backgroundColor: alpha(colors.warning, 0.15),
   },
-  ratingLabel: { color: colors.warning, fontSize: 12, fontWeight: "800" },
+  ratingLabel: { color: colors.warning, fontSize: 12, fontFamily: fonts.extrabold },
   pill: {
     alignSelf: "flex-start",
     paddingHorizontal: spacing.sm,
@@ -658,7 +699,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  pillLabel: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
+  pillLabel: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.semibold },
 
   inlineCta: { paddingHorizontal: spacing.lg, marginTop: spacing.xl, maxWidth: 480 },
   cta: {
@@ -666,13 +707,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    overflow: "hidden",
+    minHeight: 60,
+  },
+  ctaPlay: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    paddingLeft: 3,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.primaryText,
   },
   ctaText: { flex: 1 },
-  ctaTitle: { color: colors.primaryText, fontSize: 16, fontWeight: "800" },
-  ctaHint: { color: colors.primaryText, fontSize: 12, opacity: 0.75 },
+  ctaTitle: { color: colors.primaryText, fontSize: 16, fontFamily: fonts.extrabold },
+  ctaHint: { color: colors.primaryText, fontSize: 12, fontFamily: fonts.regular, opacity: 0.75 },
   stickyBar: {
     position: "absolute",
     left: 0,
@@ -680,9 +731,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingTop: spacing.md,
     paddingHorizontal: spacing.lg,
-    backgroundColor: "rgba(20, 17, 26, 0.96)",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+
   },
 
   actions: {
@@ -705,16 +754,16 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   actionIconActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  actionLabel: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
+  actionLabel: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.semibold },
   actionLabelActive: { color: colors.text },
 
   section: { paddingHorizontal: spacing.lg, marginTop: spacing.xl, gap: spacing.sm },
   sectionFlush: { paddingHorizontal: 0 },
-  sectionTitle: { color: colors.text, fontSize: 18, fontWeight: "800" },
+  sectionTitle: { color: colors.text, fontSize: 20, fontFamily: fonts.display },
   sectionTitleFlush: { paddingHorizontal: spacing.lg },
-  muted: { color: colors.textMuted, fontSize: 14 },
-  overview: { color: colors.text, fontSize: 15, lineHeight: 23 },
-  readMore: { color: colors.primary, fontSize: 14, fontWeight: "700" },
+  muted: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.regular },
+  overview: { color: colors.text, fontSize: 15, fontFamily: fonts.regular, lineHeight: 23 },
+  readMore: { color: colors.primary, fontSize: 14, fontFamily: fonts.bold },
 
   watchRow: {
     flexDirection: "row",
@@ -729,10 +778,10 @@ const styles = StyleSheet.create({
   watchRowWide: { maxWidth: 560 },
   watchRowHighlighted: { borderColor: colors.primary },
   watchText: { flex: 1, gap: 2 },
-  watchTitle: { color: colors.text, fontSize: 15, fontWeight: "600" },
-  watchHint: { color: colors.textMuted, fontSize: 12 },
+  watchTitle: { color: colors.text, fontSize: 15, fontFamily: fonts.semibold },
+  watchHint: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.regular },
   toggle: { flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingVertical: spacing.sm },
-  toggleLabel: { color: colors.textMuted, fontSize: 14, fontWeight: "600" },
+  toggleLabel: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.semibold },
 
   trailer: {
     width: "100%",
@@ -744,7 +793,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceRaised,
   },
   trailerWide: { maxWidth: 560 },
-  trailerShade: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(20, 17, 26, 0.25)" },
+  trailerShade: { ...StyleSheet.absoluteFill, backgroundColor: alpha(colors.backgroundDeep, 0.3) },
   playButton: {
     width: 64,
     height: 64,
@@ -759,8 +808,8 @@ const styles = StyleSheet.create({
   castCard: { width: 88, gap: 4 },
   castPhoto: { width: 88, height: 88, borderRadius: 44, backgroundColor: colors.surfaceRaised },
   castPlaceholder: { alignItems: "center", justifyContent: "center" },
-  castName: { color: colors.text, fontSize: 13, fontWeight: "600", textAlign: "center" },
-  castCharacter: { color: colors.textMuted, fontSize: 12, textAlign: "center" },
+  castName: { color: colors.text, fontSize: 13, fontFamily: fonts.semibold, textAlign: "center" },
+  castCharacter: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.regular, textAlign: "center" },
 
   seasonRow: {
     flexDirection: "row",
@@ -771,11 +820,11 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   seasonText: { flex: 1, gap: 2 },
-  seasonName: { color: colors.text, fontSize: 15 },
+  seasonName: { color: colors.text, fontSize: 15, fontFamily: fonts.regular },
   seasonLogos: { flexDirection: "row", gap: spacing.xs },
-  seasonMissing: { color: colors.textMuted, fontSize: 12, fontStyle: "italic" },
+  seasonMissing: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.regular, fontStyle: "italic" },
 
-  sheetBackdrop: { flex: 1, backgroundColor: "rgba(10, 8, 14, 0.6)" },
+  sheetBackdrop: { flex: 1, backgroundColor: alpha(colors.backgroundDeep, 0.7) },
   sheet: {
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
@@ -795,7 +844,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
     marginBottom: spacing.sm,
   },
-  sheetTitle: { color: colors.text, fontSize: 18, fontWeight: "800", marginBottom: spacing.xs },
+  sheetTitle: { color: colors.text, fontSize: 21, fontFamily: fonts.display, marginBottom: spacing.xs },
   sheetRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -806,10 +855,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   sheetRowOn: { borderColor: colors.success },
-  sheetName: { flex: 1, color: colors.text, fontSize: 16 },
+  sheetName: { flex: 1, color: colors.text, fontSize: 16, fontFamily: fonts.regular },
   targetText: { flex: 1, gap: 2 },
-  targetStatus: { fontSize: 14, fontWeight: "600", textAlign: "center", marginTop: spacing.xs },
+  targetStatus: { fontSize: 14, fontFamily: fonts.semibold, textAlign: "center", marginTop: spacing.xs },
 
   /** Small, discreet credit right below the availability it refers to. */
-  source: { color: colors.textMuted, fontSize: 11, paddingHorizontal: spacing.lg, marginTop: spacing.sm, opacity: 0.8 },
+  source: { color: colors.textMuted, fontSize: 11, fontFamily: fonts.regular, paddingHorizontal: spacing.lg, marginTop: spacing.sm, opacity: 0.8 },
 });

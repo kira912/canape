@@ -6,7 +6,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "../../components/Button";
 import { Seo } from "../../components/Seo";
-import { colors, radius, spacing } from "../../constants/theme";
+import { colors, radius, spacing, fonts } from "../../constants/theme";
 import { ApiError } from "../../lib/api-client";
 import { errorMessage } from "../../lib/error-message";
 import { useSession } from "../../lib/household-store";
@@ -135,9 +135,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.xl,
   },
-  title: { color: colors.text, fontSize: 20, fontWeight: "700", textAlign: "center" },
-  device: { color: colors.text, fontSize: 17, fontWeight: "600", textAlign: "center" },
-  text: { color: colors.textMuted, fontSize: 14, lineHeight: 20, textAlign: "center" },
+  title: { color: colors.text, fontSize: 22, fontFamily: fonts.display, textAlign: "center" },
+  device: { color: colors.text, fontSize: 17, fontFamily: fonts.semibold, textAlign: "center" },
+  text: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.regular, lineHeight: 20, textAlign: "center" },
   warning: {
     flexDirection: "row",
     gap: spacing.sm,
@@ -145,9 +145,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
   },
-  warningText: { flex: 1, color: colors.text, fontSize: 13, lineHeight: 18 },
-  error: { color: colors.danger, fontSize: 13, textAlign: "center" },
-  pickTitle: { color: colors.text, fontSize: 15, fontWeight: "600", textAlign: "center" },
+  warningText: { flex: 1, color: colors.text, fontSize: 13, fontFamily: fonts.regular, lineHeight: 18 },
+  error: { color: colors.danger, fontSize: 13, fontFamily: fonts.regular, textAlign: "center" },
+  pickTitle: { color: colors.text, fontSize: 15, fontFamily: fonts.semibold, textAlign: "center" },
   choices: { flexDirection: "row", gap: spacing.md, justifyContent: "center" },
   choice: {
     minWidth: 72,
@@ -159,5 +159,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceRaised,
     alignItems: "center",
   },
-  choiceLabel: { color: colors.text, fontSize: 28, fontWeight: "800", letterSpacing: 4 },
+  choiceLabel: { color: colors.text, fontSize: 28, fontFamily: fonts.extrabold, letterSpacing: 4 },
 });

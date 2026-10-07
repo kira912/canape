@@ -12,6 +12,15 @@ export const en: Translations = {
     choosePlatformsFirst: "Choose your platforms first",
     rating: "★ {{value}}+",
     underDuration: "< {{duration}}",
+    all: "All",
+  },
+  filters: {
+    title: "Filters",
+    sort: "Sort by",
+    duration: "Length",
+    rating: "Rating",
+    genres: "Genres",
+    display: "Display",
   },
   errors: {
     network: "Can't reach the server.",
@@ -58,8 +67,9 @@ export const en: Translations = {
   },
   search: {
     placeholder: "A movie, a series…",
-    groupByPlatform: "Group by platform",
-    showAsList: "Show as a list",
+    groupByPlatform: "By platform",
+    showAsList: "As a list",
+    aiBadge: "AI",
     sort: {
       relevance: "Relevance",
       rating: "★ Top rated",
@@ -270,10 +280,10 @@ export const en: Translations = {
     nameTaken:
       "This name is already taken in the household. If it's you, get your profile back with your recovery code or a QR code.",
     recover: "Recover my profile",
+    haveAccount: "I already have an account or an invite",
     recoveryCode: "Recovery code",
     recoveryCodeHint: "The 16-character code created in Profile (or Household) → “Use Canapé on another device”.",
     invalidRecoveryCode: "Unknown recovery code.",
-    pending: "One moment…",
     submitCreate: "Create household",
     submitJoin: "Join",
     submitRecover: "Recover my profile",

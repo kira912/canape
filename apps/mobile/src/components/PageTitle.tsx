@@ -1,27 +1,41 @@
 import { StyleSheet, Text, type StyleProp, type TextStyle } from "react-native";
-import { colors, spacing } from "../constants/theme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { colors, fonts, spacing } from "../constants/theme";
 import { useIsWide } from "../lib/layout";
+import { FadeIn } from "./motion";
 
 /**
- * Page title inside the content column on wide screens, where the navigation
- * header is hidden (side navigation). Phones keep the regular header.
+ * Editorial page title at the top of each tab (there is no navigation header):
+ * it carries the status bar inset on phones.
  */
 export function PageTitle({ children, style }: { children: string; style?: StyleProp<TextStyle> }) {
-  if (!useIsWide()) return null;
+  const insets = useSafeAreaInsets();
+  const isWide = useIsWide();
   return (
-    <Text style={[styles.title, style]} accessibilityRole="header">
-      {children}
-    </Text>
+    <FadeIn from={8}>
+      <Text
+        style={[
+          styles.title,
+          isWide ? styles.titleWide : { paddingTop: insets.top + spacing.lg },
+          style,
+        ]}
+        accessibilityRole="header"
+      >
+        {children}
+      </Text>
+    </FadeIn>
   );
 }
 
 const styles = StyleSheet.create({
   title: {
     color: colors.text,
-    fontSize: 28,
-    fontWeight: "800",
+    fontSize: 32,
+    lineHeight: 38,
+    fontFamily: fonts.display,
+    letterSpacing: -0.5,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.md,
   },
+  titleWide: { fontSize: 40, lineHeight: 46, paddingTop: spacing.xxl },
 });

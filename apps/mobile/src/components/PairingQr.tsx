@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
 import { SITE } from "../constants/site";
-import { colors, spacing } from "../constants/theme";
+import { colors, spacing, fonts } from "../constants/theme";
 import { ApiError } from "../lib/api-client";
 import { useCreatePairing, usePairingClaim } from "../lib/queries";
 import { Button } from "./Button";
@@ -77,12 +77,12 @@ export function PairingQr() {
 
 const styles = StyleSheet.create({
   container: { alignItems: "center", gap: spacing.md },
-  title: { color: colors.text, fontSize: 20, fontWeight: "700", textAlign: "center" },
-  text: { color: colors.textMuted, fontSize: 14, lineHeight: 20, textAlign: "center" },
+  title: { color: colors.text, fontSize: 22, fontFamily: fonts.display, textAlign: "center" },
+  text: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.regular, lineHeight: 20, textAlign: "center" },
   qr: { width: 220, height: 220, alignItems: "center", justifyContent: "center", marginVertical: spacing.sm },
   codeBox: { alignItems: "center", gap: spacing.xs },
-  code: { color: colors.text, fontSize: 40, fontWeight: "800", letterSpacing: 8 },
+  code: { color: colors.text, fontSize: 40, fontFamily: fonts.extrabold, letterSpacing: 8 },
   waiting: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  hint: { color: colors.textMuted, fontSize: 12, textAlign: "center" },
-  error: { color: colors.danger, fontSize: 14, textAlign: "center" },
+  hint: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.regular, textAlign: "center" },
+  error: { color: colors.danger, fontSize: 14, fontFamily: fonts.regular, textAlign: "center" },
 });

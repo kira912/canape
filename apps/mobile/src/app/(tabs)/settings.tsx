@@ -15,7 +15,7 @@ import { ProviderLogo } from "../../components/ProviderLogo";
 import { Seo } from "../../components/Seo";
 import { TextField } from "../../components/TextField";
 import { TvSection } from "../../components/TvSection";
-import { colors, radius, spacing } from "../../constants/theme";
+import { colors, radius, spacing, fonts } from "../../constants/theme";
 import { LANGUAGE_NAMES, type LanguagePreference } from "../../i18n";
 import { ApiError } from "../../lib/api-client";
 import { errorMessage } from "../../lib/error-message";
@@ -424,14 +424,14 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: spacing.sm },
   header: { gap: spacing.md, paddingTop: spacing.sm, marginBottom: spacing.xs },
   card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md },
-  cardTitle: { color: colors.text, fontSize: 18, fontWeight: "700" },
+  cardTitle: { color: colors.text, fontSize: 20, fontFamily: fonts.display },
   members: { flexDirection: "row", flexWrap: "wrap", gap: spacing.lg },
   member: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  memberName: { color: colors.text, fontSize: 15 },
+  memberName: { color: colors.text, fontSize: 15, fontFamily: fonts.regular },
   inviteRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   inviteText: { flex: 1 },
-  inviteLabel: { color: colors.textMuted, fontSize: 12 },
-  inviteCode: { color: colors.text, fontSize: 24, fontWeight: "800", letterSpacing: 4 },
+  inviteLabel: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.regular },
+  inviteCode: { color: colors.text, fontSize: 24, fontFamily: fonts.extrabold, letterSpacing: 4 },
   shareButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  shareLabel: { color: colors.primaryText, fontWeight: "600" },
+  shareLabel: { color: colors.primaryText, fontFamily: fonts.semibold },
   scanButton: { alignSelf: "flex-start" },
   credential: {
     backgroundColor: colors.surfaceRaised,
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: 2,
   },
-  credentialValue: { color: colors.text, fontSize: 20, fontWeight: "700" },
+  credentialValue: { color: colors.text, fontSize: 20, fontFamily: fonts.bold },
   secondaryButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -462,23 +462,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  secondaryLabel: { color: colors.text, fontWeight: "600" },
+  secondaryLabel: { color: colors.text, fontFamily: fonts.semibold },
   soloInvite: { gap: spacing.xs, marginTop: spacing.sm },
-  soloIntro: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
+  soloIntro: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.regular, lineHeight: 20 },
   nameEditor: { gap: spacing.xs },
   nameRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   nameInput: { flex: 1 },
-  error: { color: colors.danger, fontSize: 13 },
-  success: { color: colors.success, fontSize: 13, textAlign: "center" },
+  error: { color: colors.danger, fontSize: 13, fontFamily: fonts.regular },
+  success: { color: colors.success, fontSize: 13, fontFamily: fonts.regular, textAlign: "center" },
   textLink: { alignSelf: "flex-start" },
-  textLinkLabel: { color: colors.primary, fontSize: 13, fontWeight: "600" },
+  textLinkLabel: { color: colors.primary, fontSize: 13, fontFamily: fonts.semibold },
   confirmBox: { gap: spacing.sm },
   confirmActions: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.sm },
   signOutOthers: { gap: spacing.xs },
-  sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "700", marginTop: spacing.md },
+  sectionTitle: { color: colors.text, fontSize: 20, fontFamily: fonts.display, marginTop: spacing.md },
   languages: { gap: spacing.sm },
   languageChips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  intro: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
+  intro: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.regular, lineHeight: 20 },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -490,13 +490,13 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   rowSelected: { borderColor: colors.primary },
-  name: { flex: 1, color: colors.text, fontSize: 15 },
+  name: { flex: 1, color: colors.text, fontSize: 15, fontFamily: fonts.regular },
   footer: { gap: spacing.lg, marginTop: spacing.xl },
   signOutWide: { alignSelf: "center" },
   /** The list already has horizontal padding. */
   flushTitle: { paddingHorizontal: 0 },
   deleteLink: { alignSelf: "center", padding: spacing.sm },
-  deleteLabel: { color: colors.danger, fontSize: 14, fontWeight: "600" },
+  deleteLabel: { color: colors.danger, fontSize: 14, fontFamily: fonts.semibold },
   deleteCard: {
     gap: spacing.md,
     padding: spacing.lg,
@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   deleteCardWide: { alignSelf: "center", maxWidth: 480 },
-  deleteText: { color: colors.text, fontSize: 14, lineHeight: 20 },
+  deleteText: { color: colors.text, fontSize: 14, fontFamily: fonts.regular, lineHeight: 20 },
   deleteActions: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.sm },
   deleteButton: {
     backgroundColor: colors.danger,
@@ -516,7 +516,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  deleteButtonLabel: { color: colors.text, fontSize: 15, fontWeight: "600" },
+  deleteButtonLabel: { color: colors.primaryText, fontSize: 15, fontFamily: fonts.bold },
   tmdbLogo: { width: 91, height: 12, alignSelf: "center" },
-  attribution: { color: colors.textMuted, fontSize: 11, textAlign: "center", lineHeight: 16 },
+  attribution: { color: colors.textMuted, fontSize: 11, fontFamily: fonts.regular, textAlign: "center", lineHeight: 16 },
 });

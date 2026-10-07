@@ -1,6 +1,6 @@
 import { forwardRef, useState } from "react";
 import { StyleSheet, TextInput, type TextInputProps } from "react-native";
-import { colors, radius, spacing } from "../constants/theme";
+import { colors, fonts, radius, spacing } from "../constants/theme";
 
 /** Text input with the app's focus state (the browser outline is disabled in public/index.html). */
 export const TextField = forwardRef<TextInput, TextInputProps>(function TextField(
@@ -11,7 +11,8 @@ export const TextField = forwardRef<TextInput, TextInputProps>(function TextFiel
   return (
     <TextInput
       ref={ref}
-      placeholderTextColor={colors.textMuted}
+      placeholderTextColor={colors.textFaint}
+      selectionColor={colors.primary}
       {...props}
       onFocus={(e) => {
         setFocused(true);
@@ -28,14 +29,15 @@ export const TextField = forwardRef<TextInput, TextInputProps>(function TextFiel
 
 const styles = StyleSheet.create({
   input: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 14,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
     color: colors.text,
     fontSize: 16,
+    fontFamily: fonts.semibold,
   },
-  focused: { borderColor: colors.primary },
+  focused: { borderColor: colors.primary, backgroundColor: colors.surfaceRaised },
 });

@@ -1,9 +1,8 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Redirect, Tabs } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Platform } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, spacing } from "../../constants/theme";
+import { TabDock } from "../../components/TabDock";
+import { colors } from "../../constants/theme";
 import { useSession } from "../../lib/household-store";
 import { useIsWide } from "../../lib/layout";
 import { useIsSolo } from "../../lib/queries";
@@ -13,7 +12,6 @@ export default function TabsLayout() {
   const { t } = useTranslation();
   const hydrated = useHouseholdHydrated();
   const token = useSession((s) => s.token);
-  const insets = useSafeAreaInsets();
   const isWide = useIsWide();
   const solo = useIsSolo();
 
@@ -22,77 +20,62 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      tabBar={(props) => <TabDock {...props} vertical={isWide} />}
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
-        ...(isWide
-          ? {
-              // Desktop / tablet: side navigation; each page shows its own <PageTitle>.
-              tabBarPosition: "left" as const,
-              tabBarLabelPosition: "beside-icon" as const,
-              headerShown: false,
-              tabBarStyle: {
-                width: 220,
-                paddingTop: spacing.xl,
-                backgroundColor: colors.background,
-                borderRightColor: colors.border,
-              },
-              tabBarItemStyle: { justifyContent: "flex-start", paddingHorizontal: spacing.lg, maxHeight: 52 },
-              tabBarLabelStyle: { fontSize: 15, marginLeft: spacing.md },
-              tabBarActiveBackgroundColor: colors.surface,
-            }
-          : {
-              tabBarStyle: {
-                backgroundColor: colors.background,
-                borderTopColor: colors.border,
-                // On web the default 49px bar clips label descenders ("Foyer"); keep the home-indicator inset.
-                ...(Platform.OS === "web" ? { height: 56 + insets.bottom } : {}),
-              },
-              tabBarLabelStyle: { fontSize: 11, lineHeight: 14 },
-            }),
-        headerStyle: { backgroundColor: colors.background },
-        headerTitleStyle: { color: colors.text },
-        headerShadowVisible: false,
+        // Each page shows its own <PageTitle>.
+        headerShown: false,
+        tabBarPosition: isWide ? "left" : "bottom",
+        animation: isWide ? "fade" : "shift",
+        sceneStyle: { backgroundColor: colors.background },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: t("tabs.search"),
-          headerTitle: t("tabs.searchHeader"),
-          tabBarIcon: ({ color, size }) => <Ionicons name="search" color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "search" : "search-outline"} color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="discover"
         options={{
           title: t("tabs.discover"),
-          headerTitle: t("tabs.discoverHeader"),
-          tabBarIcon: ({ color, size }) => <Ionicons name="sparkles" color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "sparkles" : "sparkles-outline"} color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="match"
         options={{
           title: t("tabs.match"),
-          headerTitle: t("tabs.matchHeader"),
-          tabBarIcon: ({ color, size }) => <Ionicons name="flame" color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "flame" : "flame-outline"} color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="favorites"
         options={{
           title: t("tabs.favorites"),
-          headerTitle: solo ? t("tabs.favoritesHeaderSolo") : t("tabs.favoritesHeader"),
-          tabBarIcon: ({ color, size }) => <Ionicons name="heart" color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "heart" : "heart-outline"} color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: solo ? t("tabs.profile") : t("tabs.household"),
-          headerTitle: solo ? t("tabs.profileHeader") : t("tabs.householdHeader"),
-          tabBarIcon: ({ color, size }) => <Ionicons name={solo ? "person" : "people"} color={color} size={size} />,
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={solo ? (focused ? "person" : "person-outline") : focused ? "people" : "people-outline"}
+              color={color}
+              size={size}
+            />
+          ),
         }}
       />
     </Tabs>

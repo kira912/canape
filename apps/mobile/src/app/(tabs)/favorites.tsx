@@ -2,12 +2,12 @@ import { partitionByAvailability, type FavoriteItem, type FavoriteList } from "@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, SectionList, StyleSheet, Text, View } from "react-native";
-import { Chip } from "../../components/Chip";
 import { EmptyState } from "../../components/EmptyState";
+import { Segmented } from "../../components/Filters";
 import { PageTitle } from "../../components/PageTitle";
 import { MemberDot } from "../../components/MemberDot";
 import { TitleRow } from "../../components/TitleRow";
-import { colors, spacing } from "../../constants/theme";
+import { colors, fonts, spacing } from "../../constants/theme";
 import { centered } from "../../lib/layout";
 import { errorMessage } from "../../lib/error-message";
 import { useFavorites, useHouseholdProviderIds, useIsSolo, useMe, useProvidersById } from "../../lib/queries";
@@ -45,15 +45,16 @@ export default function FavoritesScreen() {
       </View>
       {solo ? null : (
         <View style={[styles.tabs, centered()]}>
-          <Chip
-            label={t("favorites.householdTab", { count: favorites.data?.household.length ?? 0 })}
-            selected={list === "household"}
-            onPress={() => setList("household")}
-          />
-          <Chip
-            label={t("favorites.mineTab", { count: favorites.data?.mine.length ?? 0 })}
-            selected={list === "me"}
-            onPress={() => setList("me")}
+          <Segmented
+            value={selectedList}
+            onChange={setList}
+            options={[
+              {
+                value: "household",
+                label: t("favorites.householdTab", { count: favorites.data?.household.length ?? 0 }),
+              },
+              { value: "me", label: t("favorites.mineTab", { count: favorites.data?.mine.length ?? 0 }) },
+            ]}
           />
         </View>
       )}
@@ -63,8 +64,9 @@ export default function FavoritesScreen() {
         contentContainerStyle={[styles.list, centered()]}
         stickySectionHeadersEnabled={false}
         renderSectionHeader={({ section }) => <Text style={styles.sectionTitle}>{section.title}</Text>}
-        renderItem={({ item, section }) => (
+        renderItem={({ item, section, index }) => (
           <TitleRow
+            index={index}
             title={item.title}
             householdProviderIds={providerIds}
             providersById={providersById}
@@ -96,14 +98,14 @@ export default function FavoritesScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  tabs: { flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
+  tabs: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
+  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
   sectionTitle: {
     color: colors.text,
-    fontSize: 15,
-    fontWeight: "700",
+    fontSize: 18,
+    fontFamily: fonts.display,
     marginTop: spacing.md,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   loader: { marginVertical: spacing.xl },
 });

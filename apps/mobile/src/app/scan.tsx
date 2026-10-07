@@ -8,7 +8,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "../components/Button";
 import { Seo } from "../components/Seo";
-import { colors, radius, spacing } from "../constants/theme";
+import { colors, radius, spacing, fonts } from "../constants/theme";
 import { useSession } from "../lib/household-store";
 import "../lib/scanner-setup";
 
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
-  title: { color: colors.text, fontSize: 20, fontWeight: "700" },
+  title: { color: colors.text, fontSize: 20, fontFamily: fonts.bold },
   content: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xl, gap: spacing.lg },
   cameraFrame: {
     width: "100%",
@@ -110,6 +110,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
   },
   permission: { alignItems: "center", gap: spacing.lg, maxWidth: 360 },
-  message: { color: colors.textMuted, fontSize: 15, lineHeight: 21, textAlign: "center" },
+  message: { color: colors.textMuted, fontSize: 15, fontFamily: fonts.regular, lineHeight: 21, textAlign: "center" },
   invalid: { color: colors.warning },
 });

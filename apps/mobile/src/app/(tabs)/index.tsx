@@ -15,12 +15,13 @@ import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, SectionList, StyleSheet, Text, TextInput, View } from "react-native";
 import { Button } from "../../components/Button";
 import { Chip } from "../../components/Chip";
-import { ChipRow, ChipSeparator } from "../../components/ChipRow";
 import { EmptyState } from "../../components/EmptyState";
+import { FilterGroup, FiltersPanel, FiltersToggle, Segmented } from "../../components/Filters";
+import { PressableScale } from "../../components/motion";
 import { PageTitle } from "../../components/PageTitle";
 import { ProviderLogo } from "../../components/ProviderLogo";
 import { TitleRow } from "../../components/TitleRow";
-import { colors, radius, spacing } from "../../constants/theme";
+import { alpha, colors, fonts, radius, spacing } from "../../constants/theme";
 import { errorMessage } from "../../lib/error-message";
 import { RATING_OPTIONS, RUNTIME_OPTIONS } from "../../lib/filter-options";
 import { formatRuntime } from "../../lib/labels";
@@ -70,6 +71,10 @@ export default function SearchScreen() {
   // AI results are already restricted to the household's platforms: nothing "elsewhere".
   const source = aiMode ? (ai.data ? { available: ai.data.items, elsewhere: [] } : undefined) : search.data;
   const hasFilters = Boolean(filters.mediaType || filters.maxRuntime || filters.minRating || genreNames.length);
+  // Counted on the "Filters" button (the film/series switch is visible on its own).
+  const activeFilters =
+    (sort !== "relevance" ? 1 : 0) + (filters.maxRuntime ? 1 : 0) + (filters.minRating ? 1 : 0) + genreNames.length;
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const genreIds = useMemo(
     () => genres.filter((g) => genreNames.includes(g.name)).flatMap((g) => g.ids),
     [genres, genreNames],
@@ -88,6 +93,7 @@ export default function SearchScreen() {
     setGenreNames((current) => (current.includes(name) ? current.filter((n) => n !== name) : [...current, name]));
   const clearFilters = () => {
     setFilters({});
+    setSort("relevance");
     setGenreNames([]);
   };
 
@@ -121,7 +127,7 @@ export default function SearchScreen() {
 
   if (me.isSuccess && providerIds.length === 0) {
     return (
-      <View style={styles.screen}>
+      <View style={[styles.screen, styles.center]}>
         <EmptyState icon="tv-outline" title={t("common.choosePlatformsFirst")} message={t("search.noPlatformsMessage")}>
           <Button label={t("common.choosePlatforms")} onPress={() => router.navigate("/settings")} />
         </EmptyState>
@@ -140,28 +146,21 @@ export default function SearchScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={centered()}>
+      <View style={[centered(), styles.header]}>
         <PageTitle>{t("tabs.searchHeader")}</PageTitle>
-        <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
-          <Pressable
-            onPress={toggleAi}
-            accessibilityRole="switch"
-            aria-checked={aiMode}
-            accessibilityLabel={aiMode ? t("ai.disable") : t("ai.enable")}
-            hitSlop={8}
-          >
-            <Ionicons
-              name={aiMode ? "sparkles" : "search"}
-              size={18}
-              color={aiMode ? colors.primary : colors.textMuted}
-            />
-          </Pressable>
+        <View style={[styles.searchBar, searchFocused && styles.searchBarFocused, aiMode && styles.searchBarAi]}>
+          <Ionicons
+            name={aiMode ? "sparkles" : "search"}
+            size={19}
+            color={aiMode || searchFocused ? colors.primary : colors.textFaint}
+          />
           <TextInput
             value={input}
             onChangeText={setInput}
             onSubmitEditing={submitAi}
             placeholder={aiMode ? t("ai.placeholder") : t("search.placeholder")}
-            placeholderTextColor={colors.textMuted}
+            placeholderTextColor={colors.textFaint}
+            selectionColor={colors.primary}
             style={styles.input}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
@@ -170,41 +169,35 @@ export default function SearchScreen() {
             clearButtonMode="while-editing"
           />
           {active.isFetching ? <ActivityIndicator color={colors.primary} /> : null}
-          {aiMode ? (
+          {aiMode && input.trim() ? (
             <Pressable onPress={submitAi} accessibilityRole="button" accessibilityLabel={t("ai.send")} hitSlop={8}>
-              <Ionicons name="arrow-forward-circle" size={24} color={colors.primary} />
+              <Ionicons name="arrow-up-circle" size={30} color={colors.primary} />
             </Pressable>
-          ) : (
-            <Pressable onPress={toggleAi} accessibilityRole="button" accessibilityLabel={t("ai.enable")} hitSlop={8}>
-              <Ionicons name="sparkles-outline" size={20} color={colors.primary} />
-            </Pressable>
-          )}
-          <Pressable
-            onPress={() => setViewMode(viewMode === "list" ? "byPlatform" : "list")}
-            accessibilityRole="button"
-            accessibilityLabel={viewMode === "list" ? t("search.groupByPlatform") : t("search.showAsList")}
-            hitSlop={8}
-          >
-            <Ionicons name={viewMode === "list" ? "albums-outline" : "list"} size={20} color={colors.primary} />
-          </Pressable>
+          ) : null}
+          <AiSwitch on={aiMode} onPress={toggleAi} />
         </View>
 
-        <View style={styles.toolbar}>
-          <ChipRow>
+        <View style={styles.controls}>
+          <View style={styles.segmented}>
+            <Segmented
+              value={filters.mediaType ?? "all"}
+              onChange={(value) => setFilters((f) => ({ ...f, mediaType: value === "all" ? undefined : value }))}
+              options={[
+                { value: "all", label: t("common.all") },
+                ...MEDIA_TYPES.map((m) => ({ value: m, label: t(`mediaTypePlural.${m}`) })),
+              ]}
+            />
+          </View>
+          <FiltersToggle open={filtersOpen} count={activeFilters} onPress={() => setFiltersOpen((o) => !o)} />
+        </View>
+
+        <FiltersPanel open={filtersOpen}>
+          <FilterGroup label={t("filters.sort")}>
             {SORTS.map((s) => (
               <Chip key={s} label={t(`search.sort.${s}`)} selected={sort === s} onPress={() => setSort(s)} />
             ))}
-          </ChipRow>
-          <ChipRow>
-            {MEDIA_TYPES.map((m) => (
-              <Chip
-                key={m}
-                label={t(`mediaTypePlural.${m}`)}
-                selected={filters.mediaType === m}
-                onPress={() => toggleFilter("mediaType", m)}
-              />
-            ))}
-            <ChipSeparator />
+          </FilterGroup>
+          <FilterGroup label={t("filters.duration")}>
             {RUNTIME_OPTIONS.map((r) => (
               <Chip
                 key={r}
@@ -213,6 +206,8 @@ export default function SearchScreen() {
                 onPress={() => toggleFilter("maxRuntime", r)}
               />
             ))}
+          </FilterGroup>
+          <FilterGroup label={t("filters.rating")}>
             {RATING_OPTIONS.map((r) => (
               <Chip
                 key={r}
@@ -221,9 +216,8 @@ export default function SearchScreen() {
                 onPress={() => toggleFilter("minRating", r)}
               />
             ))}
-            {hasFilters ? <Chip label={t("common.clear")} onPress={clearFilters} /> : null}
-          </ChipRow>
-          <ChipRow>
+          </FilterGroup>
+          <FilterGroup label={t("filters.genres")}>
             {genres.map((g) => (
               <Chip
                 key={g.name}
@@ -232,8 +226,23 @@ export default function SearchScreen() {
                 onPress={() => toggleGenre(g.name)}
               />
             ))}
-          </ChipRow>
-        </View>
+          </FilterGroup>
+          <FilterGroup label={t("filters.display")}>
+            <Chip
+              icon="list"
+              label={t("search.showAsList")}
+              selected={viewMode === "list"}
+              onPress={() => setViewMode("list")}
+            />
+            <Chip
+              icon="albums-outline"
+              label={t("search.groupByPlatform")}
+              selected={viewMode === "byPlatform"}
+              onPress={() => setViewMode("byPlatform")}
+            />
+            {activeFilters ? <Chip icon="refresh" label={t("common.clearFilters")} onPress={clearFilters} /> : null}
+          </FilterGroup>
+        </FiltersPanel>
       </View>
 
       <SectionList
@@ -261,8 +270,9 @@ export default function SearchScreen() {
             </View>
           ) : null
         }
-        renderItem={({ item, section }) => (
+        renderItem={({ item, section, index }) => (
           <TitleRow
+            index={index}
             title={item}
             householdProviderIds={providerIds}
             providersById={providersById}
@@ -311,6 +321,25 @@ export default function SearchScreen() {
   );
 }
 
+/** Switches between title search and the AI "describe your mood" search: labelled, so it's discoverable. */
+function AiSwitch({ on, onPress }: { on: boolean; onPress: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <PressableScale
+      onPress={onPress}
+      accessibilityRole="switch"
+      aria-checked={on}
+      accessibilityLabel={on ? t("ai.disable") : t("ai.enable")}
+      hitSlop={6}
+      pressedScale={0.9}
+      style={[styles.aiSwitch, on && styles.aiSwitchOn]}
+    >
+      <Ionicons name="sparkles" size={13} color={on ? colors.primaryText : colors.primary} />
+      <Text style={[styles.aiSwitchLabel, on && styles.aiSwitchLabelOn]}>{t("search.aiBadge")}</Text>
+    </PressableScale>
+  );
+}
+
 function useDebounced<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -322,43 +351,68 @@ function useDebounced<T>(value: T, delayMs: number): T {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  center: { justifyContent: "center" },
+  header: { gap: spacing.md, paddingBottom: spacing.md },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
     marginHorizontal: spacing.lg,
-    marginTop: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
+    paddingLeft: spacing.lg,
+    paddingRight: spacing.sm,
+    minHeight: 54,
+    borderRadius: radius.pill,
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
   },
   searchBarFocused: { borderColor: colors.primary },
-  aiSummary: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm },
-  aiSummaryText: { flex: 1, color: colors.text, fontSize: 14, fontStyle: "italic" },
-  input: { flex: 1, color: colors.text, fontSize: 16, paddingVertical: spacing.md },
-  toolbar: { gap: spacing.sm, paddingVertical: spacing.md },
-  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
+  searchBarAi: { backgroundColor: alpha(colors.primary, 0.08), borderColor: alpha(colors.primary, 0.6) },
+  input: { flex: 1, color: colors.text, fontSize: 16, fontFamily: fonts.semibold, paddingVertical: spacing.md },
+  aiSwitch: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
+    backgroundColor: alpha(colors.primary, 0.14),
+  },
+  aiSwitchOn: { backgroundColor: colors.primary },
+  aiSwitchLabel: { color: colors.primary, fontSize: 13, fontFamily: fonts.extrabold },
+  aiSwitchLabelOn: { color: colors.primaryText },
+  controls: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.lg },
+  segmented: { flex: 1, maxWidth: 320 },
+  aiSummary: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: alpha(colors.primary, 0.1),
+  },
+  aiSummaryText: { flex: 1, color: colors.text, fontSize: 14, lineHeight: 20, fontFamily: fonts.displayItalic },
+  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
     marginTop: spacing.lg,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
-  sectionTitle: { color: colors.text, fontSize: 15, fontWeight: "700", flex: 1 },
-  sectionCount: { color: colors.textMuted, fontSize: 13 },
+  sectionTitle: { color: colors.text, fontSize: 18, fontFamily: fonts.display, flex: 1 },
+  sectionCount: { color: colors.textFaint, fontSize: 13, fontFamily: fonts.bold },
   elsewhereButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.xs,
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     paddingVertical: spacing.md,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  elsewhereLabel: { color: colors.textMuted, fontSize: 14, fontWeight: "600" },
+  elsewhereLabel: { color: colors.textMuted, fontSize: 14, fontFamily: fonts.bold },
 });

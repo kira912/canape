@@ -11,6 +11,15 @@ export const fr = {
     choosePlatformsFirst: "Choisissez d'abord vos plateformes",
     rating: "★ {{value}}+",
     underDuration: "< {{duration}}",
+    all: "Tout",
+  },
+  filters: {
+    title: "Filtres",
+    sort: "Trier par",
+    duration: "Durée",
+    rating: "Note",
+    genres: "Genres",
+    display: "Affichage",
   },
   errors: {
     network: "Impossible de joindre le serveur.",
@@ -44,7 +53,7 @@ export const fr = {
     search: "Rechercher",
     searchHeader: "Canapé",
     discover: "Découvrir",
-    discoverHeader: "Qu'est-ce qu'on regarde ?",
+    discoverHeader: "Qu'est-ce qu'on regarde\u00A0?",
     match: "Match",
     matchHeader: "Soirée Match",
     favorites: "Favoris",
@@ -57,8 +66,9 @@ export const fr = {
   },
   search: {
     placeholder: "Un film, une série…",
-    groupByPlatform: "Grouper par plateforme",
-    showAsList: "Afficher en liste",
+    groupByPlatform: "Par plateforme",
+    aiBadge: "IA",
+    showAsList: "En liste",
     sort: {
       relevance: "Pertinence",
       rating: "★ Mieux notés",
@@ -271,10 +281,10 @@ export const fr = {
     nameTaken:
       "Ce prénom est déjà pris dans ce foyer. Si c'est vous, retrouvez votre profil avec votre code de secours ou un QR code.",
     recover: "Retrouver mon profil",
+    haveAccount: "J'ai déjà un compte ou une invitation",
     recoveryCode: "Code de secours",
     recoveryCodeHint: "Le code à 16 caractères créé depuis Profil (ou Foyer) → « Utiliser Canapé sur un autre appareil ».",
     invalidRecoveryCode: "Code de secours inconnu.",
-    pending: "Un instant…",
     submitCreate: "Créer le foyer",
     submitJoin: "Rejoindre",
     submitRecover: "Retrouver mon profil",

@@ -1,10 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { watchableOffers, type Provider, type TitleSummary } from "@canape/shared";
 import { Image } from "expo-image";
-import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Animated, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, radius, spacing } from "../constants/theme";
+import { alpha, colors, fonts, motion, radius, spacing } from "../constants/theme";
 import { formatRuntime } from "../lib/labels";
 import { ProviderLogo } from "./ProviderLogo";
 
@@ -36,6 +37,11 @@ export const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
 ) {
   const { t } = useTranslation();
   const position = useRef(new Animated.ValueXY()).current;
+  // Arrives from the "next card" slot behind it (scaled down), so the deck feels continuous.
+  const enter = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.spring(enter, { toValue: 1, ...motion.spring, useNativeDriver: false }).start();
+  }, [enter]);
   const gone = useRef(false);
   // The pan responder is created once per card: read the latest callback through a ref.
   const onSwipedRef = useRef(onSwiped);
@@ -46,7 +52,7 @@ export const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
     gone.current = true;
     Animated.timing(position, {
       toValue: { x: (liked ? 1 : -1) * width * 1.6, y: dy },
-      duration: 220,
+      duration: 260,
       useNativeDriver: false,
     }).start(() => onSwipedRef.current(liked));
   };
@@ -84,6 +90,7 @@ export const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
+  const scale = enter.interpolate({ inputRange: [0, 1], outputRange: [NEXT_CARD_SCALE, 1] });
 
   const providers = [...new Set(watchableOffers(title.offers, householdProviderIds).map((o) => o.providerId))];
   const runtime = title.mediaType === "movie" ? formatRuntime(t, title.runtime) : null;
@@ -96,7 +103,7 @@ export const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
       {...responder.panHandlers}
       style={[
         styles.card,
-        { width, height, transform: [{ translateX: position.x }, { translateY: position.y }, { rotate }] },
+        { width, height, transform: [{ translateX: position.x }, { translateY: position.y }, { rotate }, { scale }] },
       ]}
     >
       {title.posterUrl ? (
@@ -106,11 +113,21 @@ export const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
         </View>
       ) : null}
 
+      <LinearGradient
+        colors={[alpha(colors.backgroundDeep, 0), alpha(colors.backgroundDeep, 0.75), colors.backgroundDeep]}
+        locations={[0.35, 0.68, 1]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      {/* The whole card takes the colour of the answer as it's dragged. */}
+      <Animated.View pointerEvents="none" style={[styles.wash, styles.likeWash, { opacity: likeOpacity }]} />
+      <Animated.View pointerEvents="none" style={[styles.wash, styles.nopeWash, { opacity: nopeOpacity }]} />
+
       <Animated.View style={[styles.stamp, styles.likeStamp, { opacity: likeOpacity }]}>
         <Text style={[styles.stampText, { color: colors.success }]}>{t("match.likeStamp")}</Text>
       </Animated.View>
       <Animated.View style={[styles.stamp, styles.nopeStamp, { opacity: nopeOpacity }]}>
-        <Text style={[styles.stampText, { color: "#EB5757" }]}>{t("match.nopeStamp")}</Text>
+        <Text style={[styles.stampText, { color: colors.danger }]}>{t("match.nopeStamp")}</Text>
       </Animated.View>
 
       <Pressable style={styles.details} onPress={onOpenDetails} accessibilityRole="button" hitSlop={8}>
@@ -140,21 +157,30 @@ export const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
   );
 });
 
+/** Scale of the card waiting behind the top one (the parent draws it the same way). */
+export const NEXT_CARD_SCALE = 0.93;
+
 const styles = StyleSheet.create({
   card: {
     position: "absolute",
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     overflow: "hidden",
     backgroundColor: colors.surfaceRaised,
-    borderWidth: 1,
-    borderColor: colors.border,
     justifyContent: "flex-end",
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 10,
   },
-  info: { padding: spacing.lg, gap: spacing.xs, backgroundColor: "rgba(20, 17, 26, 0.86)" },
-  title: { color: colors.text, fontSize: 22, fontWeight: "800" },
-  meta: { color: colors.textMuted, fontSize: 14 },
+  wash: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+  likeWash: { backgroundColor: alpha(colors.success, 0.22) },
+  nopeWash: { backgroundColor: alpha(colors.danger, 0.22) },
+  info: { padding: spacing.xl, gap: 6 },
+  title: { color: colors.text, fontSize: 28, lineHeight: 33, fontFamily: fonts.display, letterSpacing: -0.3 },
+  meta: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.semibold },
   providers: { flexDirection: "row", gap: spacing.xs, marginTop: spacing.xs },
-  overview: { color: colors.text, fontSize: 13, lineHeight: 18, marginTop: spacing.xs },
+  overview: { color: colors.text, fontSize: 13, lineHeight: 19, fontFamily: fonts.regular, marginTop: spacing.xs, opacity: 0.9 },
   details: {
     position: "absolute",
     top: spacing.md,
@@ -162,22 +188,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
     borderRadius: radius.pill,
-    backgroundColor: "rgba(20, 17, 26, 0.7)",
+    backgroundColor: alpha(colors.backgroundDeep, 0.72),
   },
-  detailsLabel: { color: colors.text, fontSize: 12, fontWeight: "600" },
+  detailsLabel: { color: colors.text, fontSize: 12, fontFamily: fonts.bold },
   stamp: {
     position: "absolute",
-    top: spacing.xl * 2,
-    paddingHorizontal: spacing.md,
+    top: spacing.xxl * 1.5,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xs,
     borderWidth: 3,
     borderRadius: radius.md,
-    backgroundColor: "rgba(20, 17, 26, 0.55)",
+    backgroundColor: alpha(colors.backgroundDeep, 0.55),
   },
-  likeStamp: { left: spacing.lg, borderColor: colors.success, transform: [{ rotate: "-14deg" }] },
-  nopeStamp: { right: spacing.lg, borderColor: "#EB5757", transform: [{ rotate: "14deg" }] },
-  stampText: { fontSize: 28, fontWeight: "900", letterSpacing: 2 },
+  likeStamp: { left: spacing.lg, borderColor: colors.success, transform: [{ rotate: "-12deg" }] },
+  nopeStamp: { right: spacing.lg, borderColor: colors.danger, transform: [{ rotate: "12deg" }] },
+  stampText: { fontSize: 30, fontFamily: fonts.extrabold, letterSpacing: 3 },
 });
