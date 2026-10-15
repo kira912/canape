@@ -13,8 +13,9 @@
     />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="color-scheme" content="dark" />
+    <link data-rh="true" rel="canonical" href="%SITE_URL%/" />
     <!-- Social previews. Canonical / og:url are set per page by <Seo> (expo-router/head). -->
-    <meta property="og:type" content="website" />
+    <meta data-rh="true" property="og:type" content="website" />
     <meta property="og:site_name" content="Canapé" />
     <meta property="og:locale" content="fr_FR" />
     <meta property="og:locale:alternate" content="en_US" />
@@ -22,26 +23,65 @@
     <meta
       data-rh="true"
       property="og:description"
-      content="Cherchez sur toutes vos plateformes de streaming à la fois, ouvrez le titre en un geste et choisissez à deux avec le mode Match."
+      content="Cherchez un film ou une série sur toutes vos plateformes de streaming à la fois, ouvrez-le en un geste et choisissez à deux avec le mode Match."
     />
-    <meta property="og:image" content="%SITE_URL%/og-image.png" />
+    <meta data-rh="true" property="og:url" content="%SITE_URL%/" />
+    <meta data-rh="true" property="og:image" content="%SITE_URL%/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="Canapé : tout ce que vous pouvez regarder, sur toutes vos plateformes." />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="%SITE_URL%/og-image.png" />
+    <meta data-rh="true" name="twitter:title" content="Canapé — Trouvez quoi regarder sur toutes vos plateformes" />
+    <meta
+      data-rh="true"
+      name="twitter:description"
+      content="Cherchez un film ou une série sur toutes vos plateformes de streaming à la fois, ouvrez-le en un geste et choisissez à deux avec le mode Match."
+    />
+    <meta data-rh="true" name="twitter:image" content="%SITE_URL%/og-image.png" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "Canapé",
-        "url": "%SITE_URL%/",
-        "description": "Cherchez un film ou une série sur toutes vos plateformes de streaming à la fois, ouvrez-le en un geste et choisissez à deux avec le mode Match.",
-        "applicationCategory": "EntertainmentApplication",
-        "operatingSystem": "Web, iOS, Android",
-        "inLanguage": ["fr", "en"],
-        "image": "%SITE_URL%/og-image.png",
-        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "%SITE_URL%/#website",
+            "url": "%SITE_URL%/",
+            "name": "Canapé",
+            "description": "Agrégateur et guide streaming : trouvez où regarder des films et séries sur Netflix, Prime Video, Disney+, Canal+ et plus.",
+            "inLanguage": ["fr-FR", "en-US"],
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "%SITE_URL%/?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "%SITE_URL%/#app",
+            "name": "Canapé",
+            "url": "%SITE_URL%/",
+            "description": "Cherchez un film ou une série sur toutes vos plateformes de streaming à la fois, ouvrez-le en un geste et choisissez à deux avec le mode Match.",
+            "applicationCategory": "EntertainmentApplication",
+            "operatingSystem": "Web, iOS, Android",
+            "inLanguage": ["fr", "en"],
+            "image": "%SITE_URL%/og-image.png",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+            "author": {
+              "@type": "Person",
+              "name": "Valentin Perot"
+            }
+          },
+          {
+            "@type": "Organization",
+            "@id": "%SITE_URL%/#organization",
+            "name": "Canapé",
+            "url": "%SITE_URL%/",
+            "logo": "%SITE_URL%/icons/icon-512.png"
+          }
+        ]
       }
     </script>
     <!-- PWA -->
@@ -107,21 +147,36 @@
     <noscript>Canapé a besoin de JavaScript.</noscript>
     <div id="root">
       <main id="static-landing">
-        <h1>Canapé</h1>
-        <p>Trouvez quoi regarder sur toutes vos plateformes de streaming à la fois, seul ou à deux.</p>
-        <h2>Comment ça marche</h2>
-        <h3>Seulement vos plateformes</h3>
-        <p>
-          Netflix, Prime Video, Disney+, Canal+… Cochez vos abonnements : la recherche montre d'abord ce que vous
-          pouvez regarder sans payer en plus.
-        </p>
-        <h3>Ouvrir en un geste</h3>
-        <p>Un bouton ouvre directement le titre dans l'app de la plateforme, sur votre téléphone ou votre TV.</p>
-        <h3>Choisir à deux</h3>
-        <p>Mode Match : chacun swipe de son côté, Canapé vous montre les titres qui plaisent à tout le monde.</p>
-        <h3>Demandez en langage naturel</h3>
-        <p>« Un thriller coréen de moins de deux heures » : l'IA traduit votre envie en critères de recherche.</p>
-        <p><a href="/welcome">Commencer — gratuit, sans compte</a></p>
+        <header>
+          <h1>Canapé</h1>
+          <p>Trouvez quoi regarder sur toutes vos plateformes de streaming à la fois, seul ou à deux.</p>
+        </header>
+        <section>
+          <h2>Comment ça marche</h2>
+          <article>
+            <h3>Seulement vos plateformes</h3>
+            <p>
+              Netflix, Prime Video, Disney+, Canal+… Cochez vos abonnements : la recherche montre d'abord ce que vous
+              pouvez regarder sans payer en plus.
+            </p>
+          </article>
+          <article>
+            <h3>Ouvrir en un geste</h3>
+            <p>Un bouton ouvre directement le titre dans l'app de la plateforme, sur votre téléphone ou votre TV connectée.</p>
+          </article>
+          <article>
+            <h3>Choisir à deux</h3>
+            <p>Mode Match : chacun swipe de son côté, Canapé vous montre les titres qui plaisent à tout le monde.</p>
+          </article>
+          <article>
+            <h3>Demandez en langage naturel</h3>
+            <p>« Un thriller coréen de moins de deux heures » : l'IA traduit votre envie en critères de recherche.</p>
+          </article>
+        </section>
+        <nav aria-label="Navigation principale">
+          <p><a href="/welcome">Commencer — gratuit, sans compte</a></p>
+          <p><a href="/discover">Découvrir les films et séries du moment</a></p>
+        </nav>
         <footer>
           <a href="/legal/legal-notice">Mentions légales</a> ·
           <a href="/legal/privacy">Confidentialité</a> ·

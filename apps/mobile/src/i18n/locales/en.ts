@@ -92,6 +92,9 @@ export const en: Translations = {
     sort: { popularity: "Popular", rating: "Top rated", recent: "Newest" },
     noMatchTitle: "Nothing matches",
     noMatchMessage: "Try removing a filter.",
+    seoTitle: "Discover movies and series to stream",
+    seoDescription:
+      "Explore popular, top-rated and trending movies and TV series across your streaming platforms.",
   },
   titleRow: {
     notStreamable: "Not available for streaming in France",
@@ -100,6 +103,10 @@ export const en: Translations = {
     openTitle: "See details",
   },
   title: {
+    seoMovieTitle: "{{title}} ({{year}}) — Streaming and where to watch",
+    seoTvTitle: "{{title}} ({{year}}) — TV series streaming and where to watch",
+    seoDescription:
+      "Where to stream {{title}} ({{year}})? Check available platforms, overview, cast and ratings.",
     unavailable: "Title unavailable",
     partial: "Partly available for you",
     watch: "Watch",

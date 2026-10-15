@@ -13,3 +13,4 @@ apps/mobile/ios/
 apps/mobile/android/
 apps/api/generated/
 .vercel
+.env*

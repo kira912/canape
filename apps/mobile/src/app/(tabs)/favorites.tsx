@@ -6,6 +6,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { Segmented } from "../../components/Filters";
 import { PageTitle } from "../../components/PageTitle";
 import { MemberDot } from "../../components/MemberDot";
+import { Seo } from "../../components/Seo";
 import { TitleRow } from "../../components/TitleRow";
 import { colors, fonts, spacing } from "../../constants/theme";
 import { centered } from "../../lib/layout";
@@ -40,6 +41,11 @@ export default function FavoritesScreen() {
 
   return (
     <View style={styles.screen}>
+      <Seo
+        title={solo ? t("tabs.favoritesHeaderSolo") : t("tabs.favoritesHeader")}
+        description={t("welcome.tagline")}
+        noindex
+      />
       <View style={centered()}>
         <PageTitle>{solo ? t("tabs.favoritesHeaderSolo") : t("tabs.favoritesHeader")}</PageTitle>
       </View>

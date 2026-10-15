@@ -22,7 +22,9 @@ import { EmptyState } from "../../../components/EmptyState";
 import { MemberDot } from "../../../components/MemberDot";
 import { FadeIn, PressableScale, useReducedMotion } from "../../../components/motion";
 import { ProviderLogo } from "../../../components/ProviderLogo";
+import { Seo } from "../../../components/Seo";
 import { WatchedBadge } from "../../../components/WatchedBadge";
+import { SITE } from "../../../constants/site";
 import { alpha, colors, fonts, gradients, motion, radius, spacing } from "../../../constants/theme";
 import { errorMessage } from "../../../lib/error-message";
 import { useSession } from "../../../lib/household-store";
@@ -108,8 +110,116 @@ export default function TitleScreen() {
   const stickyCta = Boolean(primary) && !isWide;
   const longOverview = t.overview.length > LONG_OVERVIEW;
 
+  const seoTitle = translate(t.mediaType === "movie" ? "title.seoMovieTitle" : "title.seoTvTitle", {
+    title: t.title,
+    year: t.year ?? "",
+  });
+  const seoDescription = t.overview
+    ? t.overview.length > 160
+      ? `${t.overview.slice(0, 157)}...`
+      : t.overview
+    : translate("title.seoDescription", { title: t.title, year: t.year ?? "" });
+
+  const breadcrumbLd = {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: SITE.name,
+        item: SITE.url || "/",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: translate(`mediaTypePlural.${t.mediaType}`),
+        item: SITE.url ? `${SITE.url}/discover` : "/discover",
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: t.title,
+        item: SITE.url ? `${SITE.url}/title/${t.mediaType}/${t.tmdbId}` : `/title/${t.mediaType}/${t.tmdbId}`,
+      },
+    ],
+  };
+
+  const mediaLd =
+    t.mediaType === "movie"
+      ? {
+          "@type": "Movie",
+          name: t.title,
+          description: t.overview || undefined,
+          image: t.posterUrl ?? t.backdropUrl ?? undefined,
+          datePublished: t.year ? String(t.year) : undefined,
+          genre: t.genres.length ? t.genres : undefined,
+          duration: t.runtime ? `PT${t.runtime}M` : undefined,
+          aggregateRating:
+            t.rating && t.voteCount
+              ? {
+                  "@type": "AggregateRating",
+                  ratingValue: t.rating.toFixed(1),
+                  bestRating: "10",
+                  worstRating: "0",
+                  ratingCount: t.voteCount,
+                }
+              : undefined,
+          actor: t.cast.slice(0, 5).map((c) => ({
+            "@type": "Person",
+            name: c.name,
+          })),
+          trailer: t.trailerUrl
+            ? {
+                "@type": "VideoObject",
+                name: `Bande-annonce : ${t.title}`,
+                thumbnailUrl: t.trailerThumbnailUrl ?? undefined,
+                contentUrl: t.trailerUrl,
+              }
+            : undefined,
+        }
+      : {
+          "@type": "TVSeries",
+          name: t.title,
+          description: t.overview || undefined,
+          image: t.posterUrl ?? t.backdropUrl ?? undefined,
+          startDate: t.year ? String(t.year) : undefined,
+          numberOfSeasons: t.numberOfSeasons ?? undefined,
+          genre: t.genres.length ? t.genres : undefined,
+          aggregateRating:
+            t.rating && t.voteCount
+              ? {
+                  "@type": "AggregateRating",
+                  ratingValue: t.rating.toFixed(1),
+                  bestRating: "10",
+                  worstRating: "0",
+                  ratingCount: t.voteCount,
+                }
+              : undefined,
+          actor: t.cast.slice(0, 5).map((c) => ({
+            "@type": "Person",
+            name: c.name,
+          })),
+          trailer: t.trailerUrl
+            ? {
+                "@type": "VideoObject",
+                name: `Bande-annonce : ${t.title}`,
+                thumbnailUrl: t.trailerThumbnailUrl ?? undefined,
+                contentUrl: t.trailerUrl,
+              }
+            : undefined,
+        };
+
+  const jsonLd = [breadcrumbLd, mediaLd];
+
   return (
     <View style={styles.screen}>
+      <Seo
+        title={seoTitle}
+        description={seoDescription}
+        image={t.backdropUrl ?? t.posterUrl ?? undefined}
+        type={t.mediaType === "movie" ? "video.movie" : "video.tv_show"}
+        jsonLd={jsonLd}
+      />
       <Animated.ScrollView
         contentContainerStyle={{ paddingBottom: stickyCta ? 110 + insets.bottom : spacing.xl * 2 }}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {

@@ -20,6 +20,7 @@ import { FilterGroup, FiltersPanel, FiltersToggle, Segmented } from "../../compo
 import { PressableScale } from "../../components/motion";
 import { PageTitle } from "../../components/PageTitle";
 import { ProviderLogo } from "../../components/ProviderLogo";
+import { Seo } from "../../components/Seo";
 import { TitleRow } from "../../components/TitleRow";
 import { alpha, colors, fonts, radius, spacing } from "../../constants/theme";
 import { errorMessage } from "../../lib/error-message";
@@ -146,6 +147,7 @@ export default function SearchScreen() {
 
   return (
     <View style={styles.screen}>
+      <Seo title={t("welcome.seoTitle")} description={t("welcome.seoDescription")} />
       <View style={[centered(), styles.header]}>
         <PageTitle>{t("tabs.searchHeader")}</PageTitle>
         <View style={[styles.searchBar, searchFocused && styles.searchBarFocused, aiMode && styles.searchBarAi]}>

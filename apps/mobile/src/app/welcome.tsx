@@ -23,6 +23,7 @@ import { FadeIn, PressableScale, Reveal, useReducedMotion } from "../components/
 import { PairingQr } from "../components/PairingQr";
 import { Seo } from "../components/Seo";
 import { TextField } from "../components/TextField";
+import { SITE } from "../constants/site";
 import { alpha, colors, fonts, frappe, motion, radius, spacing } from "../constants/theme";
 import { ApiError } from "../lib/api-client";
 import { errorMessage } from "../lib/error-message";
@@ -97,6 +98,24 @@ export default function WelcomeScreen() {
     }
   };
 
+  const breadcrumbLd = {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: SITE.name,
+        item: SITE.url || "/",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: t("welcome.seoTitle"),
+        item: SITE.url ? `${SITE.url}/welcome` : "/welcome",
+      },
+    ],
+  };
+
   return (
     <SafeAreaView style={styles.screen}>
       <Ambience />
@@ -105,7 +124,7 @@ export default function WelcomeScreen() {
           contentContainerStyle={[styles.content, centered(FORM_MAX_WIDTH)]}
           keyboardShouldPersistTaps="handled"
         >
-          <Seo title={t("welcome.seoTitle")} description={t("welcome.seoDescription")} />
+          <Seo title={t("welcome.seoTitle")} description={t("welcome.seoDescription")} jsonLd={breadcrumbLd} />
           <FadeIn from={20}>
             <Text style={styles.logo} accessibilityRole="header" aria-level={1}>
               Canap<Text style={styles.logoAccent}>é</Text>

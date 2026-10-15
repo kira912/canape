@@ -91,6 +91,9 @@ export const fr = {
     sort: { popularity: "Populaires", rating: "Mieux notés", recent: "Récents" },
     noMatchTitle: "Rien ne correspond",
     noMatchMessage: "Essayez d'enlever un filtre.",
+    seoTitle: "Découvrir des films et séries en streaming",
+    seoDescription:
+      "Explorez les films et séries populaires, les mieux notés et les nouveautés disponibles en streaming sur vos plateformes.",
   },
   titleRow: {
     notStreamable: "Pas disponible en streaming en France",
@@ -99,6 +102,10 @@ export const fr = {
     openTitle: "Voir la fiche",
   },
   title: {
+    seoMovieTitle: "{{title}} ({{year}}) — Streaming et où regarder",
+    seoTvTitle: "{{title}} ({{year}}) — Série en streaming et où regarder",
+    seoDescription:
+      "Où regarder {{title}} ({{year}}) en streaming en France ? Retrouvez les plateformes disponibles, le résumé, le casting et les avis.",
     unavailable: "Fiche indisponible",
     partial: "Partiellement dispo chez vous",
     watch: "Regarder",

@@ -11,6 +11,7 @@ import { FilterGroup, FiltersPanel, FiltersToggle, Segmented } from "../../compo
 import { Skeleton } from "../../components/motion";
 import { PageTitle } from "../../components/PageTitle";
 import { PosterCard } from "../../components/PosterCard";
+import { Seo } from "../../components/Seo";
 import { colors, radius, spacing } from "../../constants/theme";
 import { errorMessage } from "../../lib/error-message";
 import { RATING_OPTIONS, RUNTIME_OPTIONS } from "../../lib/filter-options";
@@ -83,6 +84,7 @@ export default function DiscoverScreen() {
 
   return (
     <View style={styles.screen}>
+      <Seo title={t("discover.seoTitle")} description={t("discover.seoDescription")} />
       {/* Outside the list so the filters stay at hand while scrolling. */}
       <View style={[styles.header, centered(GRID_MAX_WIDTH)]}>
         <PageTitle>{t("tabs.discoverHeader")}</PageTitle>

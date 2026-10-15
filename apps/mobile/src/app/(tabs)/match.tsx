@@ -23,6 +23,7 @@ import { FilterGroup, Segmented } from "../../components/Filters";
 import { MatchModal } from "../../components/MatchModal";
 import { FadeIn, PressableScale, Reveal } from "../../components/motion";
 import { PageTitle } from "../../components/PageTitle";
+import { Seo } from "../../components/Seo";
 import { NEXT_CARD_SCALE, SwipeCard, type SwipeCardHandle } from "../../components/SwipeCard";
 import { TextField } from "../../components/TextField";
 import { TitleRow } from "../../components/TitleRow";
@@ -118,6 +119,7 @@ export default function MatchScreen() {
 
   return (
     <View style={styles.screen}>
+      <Seo title={t("tabs.matchHeader")} description={t("welcome.tagline")} noindex />
       <ScrollView contentContainerStyle={[styles.content, centered()]}>
         <PageTitle>{t("tabs.matchHeader")}</PageTitle>
         {content}

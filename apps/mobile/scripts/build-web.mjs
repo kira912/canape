@@ -19,7 +19,14 @@ const vercelHost = env.VERCEL_ENV === "production" ? env.VERCEL_PROJECT_PRODUCTI
 const siteUrl = (env.SITE_URL ?? (vercelHost ? `https://${vercelHost}` : "http://localhost:3333")).replace(/\/$/, "");
 
 /** Public pages worth indexing (the rest needs a household or is personal). */
-const PUBLIC_PATHS = ["/welcome", "/legal/legal-notice", "/legal/privacy", "/legal/terms"];
+const PUBLIC_PATHS = [
+  "/",
+  "/discover",
+  "/welcome",
+  "/legal/legal-notice",
+  "/legal/privacy",
+  "/legal/terms",
+];
 
 execFileSync("npx", ["expo", "export", "-p", "web"], {
   cwd: root,
@@ -39,15 +46,30 @@ writeFileSync(indexPath, readFileSync(indexPath, "utf8").replaceAll("%SITE_URL%"
 writeFileSync(
   join(dist, "robots.txt"),
   production
-    ? `User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${siteUrl}/sitemap.xml\n`
+    ? [
+        "User-agent: *",
+        "Allow: /",
+        "Disallow: /api/",
+        "Disallow: /pair/",
+        "Disallow: /scan",
+        "Disallow: /settings",
+        "Disallow: /match",
+        "Disallow: /favorites",
+        "",
+        `Sitemap: ${siteUrl}/sitemap.xml`,
+        "",
+      ].join("\n")
     : "User-agent: *\nDisallow: /\n",
 );
 
 writeFileSync(
   join(dist, "sitemap.xml"),
-  `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${PUBLIC_PATHS.map(
-    (path) => `  <url><loc>${siteUrl}${path}</loc></url>`,
-  ).join("\n")}\n</urlset>\n`,
+  `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${PUBLIC_PATHS.map((path) => {
+    const loc = path === "/" ? `${siteUrl}/` : `${siteUrl}${path}`;
+    const priority = path === "/" ? "1.0" : path === "/discover" || path === "/welcome" ? "0.8" : "0.5";
+    const changefreq = path === "/" || path === "/discover" ? "daily" : path === "/welcome" ? "weekly" : "monthly";
+    return `  <url>\n    <loc>${loc}</loc>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+  }).join("\n")}\n</urlset>\n`,
 );
 
 console.log(`SEO: ${siteUrl} (${production ? "indexable" : "noindex"})`);

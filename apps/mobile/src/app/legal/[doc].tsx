@@ -24,10 +24,41 @@ export default function LegalScreen() {
   const doc = TEXTS[language][param];
   const updated = new Intl.DateTimeFormat(language, { dateStyle: "long" }).format(new Date(SITE.legalUpdatedAt));
 
+  const jsonLd = [
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: SITE.name,
+          item: SITE.url || "/",
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: doc.title,
+          item: SITE.url ? `${SITE.url}/legal/${param}` : `/legal/${param}`,
+        },
+      ],
+    },
+    {
+      "@type": "Article",
+      headline: doc.title,
+      description: doc.description,
+      dateModified: SITE.legalUpdatedAt,
+      inLanguage: language === "fr" ? "fr-FR" : "en-US",
+      author: {
+        "@type": "Person",
+        name: SITE.publisher,
+      },
+    },
+  ];
+
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
       <ScrollView contentContainerStyle={[styles.content, centered()]}>
-        <Seo title={doc.title} description={doc.description} />
+        <Seo title={doc.title} description={doc.description} type="article" jsonLd={jsonLd} />
         {/* Opened from a link (search engine, shared URL) there is no history: go to the app instead. */}
         <Pressable
           onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
